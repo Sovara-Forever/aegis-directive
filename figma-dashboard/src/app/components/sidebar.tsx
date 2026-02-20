@@ -139,10 +139,10 @@ export function Sidebar({ activePage, onNavigate, selectedDealership, onDealersh
         {/* Footer */}
         <div className="p-4 border-t" style={{ borderColor: '#334155' }}>
           {!isCollapsed && (
-            <p className="text-center" style={{ fontSize: '12px', color: '#64748B' }}>
-              Powered by Sovereign Desk
+            <p className="text-center" style={{ fontSize: '12px', color: '#94A3B8' }}>
+              Aegis Intelligence Alpha V1.2
               <br />
-              Updated Jan 7, 2026
+              <span style={{ fontSize: '11px', color: '#64748B' }}>Updated Feb 2026</span>
             </p>
           )}
           

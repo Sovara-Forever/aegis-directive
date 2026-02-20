@@ -55,19 +55,40 @@ export const DealershipSelector: React.FC<DealershipSelectorProps> = ({
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-sm text-text-secondary">Dealership:</span>
+      <span style={{ fontSize: '14px', color: '#F1F5F9' }}>Dealership:</span>
       <Select value={selectedDealership} onValueChange={onDealershipChange}>
-        <SelectTrigger className="w-[250px]">
+        <SelectTrigger
+          className="w-[250px]"
+          style={{
+            backgroundColor: '#0F172A',
+            borderColor: '#334155',
+            color: '#F1F5F9',
+            fontSize: '14px'
+          }}
+        >
           <SelectValue placeholder="Select dealership" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent
+          style={{
+            backgroundColor: '#1E293B',
+            borderColor: '#334155',
+            color: '#F1F5F9'
+          }}
+        >
           {loading ? (
-            <SelectItem value="loading" disabled>Loading...</SelectItem>
+            <SelectItem value="loading" disabled style={{ color: '#94A3B8' }}>Loading...</SelectItem>
           ) : dealerships.length === 0 ? (
-            <SelectItem value="none" disabled>No dealerships found</SelectItem>
+            <SelectItem value="none" disabled style={{ color: '#94A3B8' }}>No dealerships found</SelectItem>
           ) : (
             dealerships.map((dealer) => (
-              <SelectItem key={dealer.id} value={dealer.name}>
+              <SelectItem
+                key={dealer.id}
+                value={dealer.name}
+                style={{
+                  color: '#F1F5F9',
+                  cursor: 'pointer'
+                }}
+              >
                 {dealer.name}
               </SelectItem>
             ))
