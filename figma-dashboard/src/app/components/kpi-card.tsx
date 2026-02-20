@@ -7,11 +7,13 @@ interface KPICardProps {
   sub: string;
   change: string;
   variant?: 'info' | 'success' | 'warning' | 'danger';
+  trend?: 'positive' | 'negative' | 'neutral';  // Controls arrow direction & color
   icon?: LucideIcon;
 }
 
-export function KPICard({ metric, value, sub, change, variant = 'info', icon: Icon }: KPICardProps) {
-  const isPositive = change.startsWith('+');
+export function KPICard({ metric, value, sub, change, variant = 'info', trend, icon: Icon }: KPICardProps) {
+  // If trend prop provided, use it; otherwise fall back to +/- detection
+  const effectiveTrend = trend ?? (change.startsWith('+') ? 'positive' : change.startsWith('-') ? 'negative' : 'neutral');
   
   const variantColors = {
     info: '#0EA5E9',
@@ -59,16 +61,14 @@ export function KPICard({ metric, value, sub, change, variant = 'info', icon: Ic
 
       {/* Change Indicator */}
       <div className="flex items-center gap-1.5">
-        {isPositive ? (
-          <ArrowUp size={16} style={{ color: '#10B981' }} />
-        ) : (
-          <ArrowDown size={16} style={{ color: '#EF4444' }} />
-        )}
-        <span 
-          className="font-medium" 
-          style={{ 
-            fontSize: '14px', 
-            color: isPositive ? '#10B981' : '#EF4444' 
+        {effectiveTrend === 'positive' && <ArrowUp size={16} style={{ color: '#10B981' }} />}
+        {effectiveTrend === 'negative' && <ArrowDown size={16} style={{ color: '#EF4444' }} />}
+        {effectiveTrend === 'neutral' && <TrendingUp size={16} style={{ color: '#94A3B8' }} />}
+        <span
+          className="font-medium"
+          style={{
+            fontSize: '14px',
+            color: effectiveTrend === 'positive' ? '#10B981' : effectiveTrend === 'negative' ? '#EF4444' : '#94A3B8'
           }}
         >
           {change}

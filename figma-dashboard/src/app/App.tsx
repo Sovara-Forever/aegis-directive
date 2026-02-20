@@ -3,24 +3,28 @@ import { Sidebar } from "./components/sidebar";
 import { ExecutiveOverview } from "./components/executive-overview";
 import { CompetitorInsights } from "./components/competitor-insights";
 import { WasteAudit } from "./components/waste-audit";
-import { ContentPipeline } from "./components/content-pipeline";
+import ContentGeneration from "./components/content-generation";
 import { ROIProjector } from "./components/roi-projector";
+import { OverviewDashboard } from "./components/overview-dashboard";
 import { Menu } from "lucide-react";
 
 export default function App() {
-  const [activePage, setActivePage] = useState("executive");
+  const [activePage, setActivePage] = useState("overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [selectedDealership, setSelectedDealership] = useState("Mid-State Chevrolet & Buick");
 
   const renderPage = () => {
     switch (activePage) {
+      case "overview":
+        return <OverviewDashboard selectedDealership={selectedDealership} />;
       case "executive":
-        return <ExecutiveOverview />;
+        return <ExecutiveOverview selectedDealership={selectedDealership} />;
       case "competitor":
         return <CompetitorInsights />;
       case "waste":
         return <WasteAudit />;
       case "content":
-        return <ContentPipeline />;
+        return <ContentGeneration selectedDealership={selectedDealership} />;
       case "roi":
         return <ROIProjector />;
       case "data":
@@ -96,6 +100,8 @@ export default function App() {
             setActivePage(page);
             setSidebarOpen(false);
           }}
+          selectedDealership={selectedDealership}
+          onDealershipChange={setSelectedDealership}
         />
       </div>
 

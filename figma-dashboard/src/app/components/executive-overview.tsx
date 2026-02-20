@@ -1,26 +1,154 @@
 import { KPICard } from './kpi-card';
 import { Package, DollarSign, TrendingUp, Search } from 'lucide-react';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { useState } from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { useState, useEffect } from 'react';
+import { supabase } from '../../../lib/supabase';
 
-const inventoryData = [
-  { model: 'Silverado 1500', stock: 71, velocity: 8.5 },
-  { model: 'Silverado 2500', stock: 58, velocity: 6.2 },
-  { model: 'Equinox', stock: 37, velocity: 9.8 },
-  { model: 'Trax', stock: 33, velocity: 7.4 },
-  { model: 'Silverado 3500', stock: 17, velocity: 4.1 },
-];
+interface InventoryVehicle {
+  id: string;
+  dealership_id: string;
+  vin: string;
+  year: number;
+  make: string;
+  model: string;
+  trim?: string;
+  price?: number;
+  msrp?: number;
+  savings?: number;
+}
 
-const seoKeywords = [
-  { keyword: 'chevrolet dealers near me', rank: 95, clicks: 42800, status: 'danger' },
-  { keyword: 'chevy suv', rank: 6, clicks: 2800, status: 'success' },
-  { keyword: 'midstate chevy', rank: 1, clicks: 320, status: 'success' },
-  { keyword: 'flatwoods chevrolet', rank: 2, clicks: 180, status: 'success' },
-  { keyword: 'chevy silverado near me', rank: 28, clicks: 5200, status: 'warning' },
-];
+interface KeywordRanking {
+  id: string;
+  dealership_id: string;
+  keyword: string;
+  search_volume?: number;
+  ranking_position?: number;
+  ranking_url?: string;
+  cpc?: number;
+  difficulty_score?: number;
+  tracked_date?: string;
+}
 
-export function ExecutiveOverview() {
+interface ExecutiveOverviewProps {
+  selectedDealership: string;
+}
+
+export function ExecutiveOverview({ selectedDealership }: ExecutiveOverviewProps) {
   const [activeTab, setActiveTab] = useState('inventory');
+  const [inventory, setInventory] = useState<InventoryVehicle[]>([]);
+  const [keywords, setKeywords] = useState<KeywordRanking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dealershipId, setDealershipId] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadData() {
+      setLoading(true);
+      try {
+        // Step 1: Look up dealership UUID from name
+        const { data: dealerData, error: dealerError } = await supabase
+          .from('dealerships')
+          .select('id')
+          .eq('name', selectedDealership)
+          .single();
+
+        if (dealerError) {
+          console.error('Dealership lookup error:', dealerError);
+          setInventory([]);
+          setKeywords([]);
+          setLoading(false);
+          return;
+        }
+
+        const dId = dealerData?.id;
+        setDealershipId(dId);
+
+        if (!dId) {
+          console.error('Dealership not found:', selectedDealership);
+          setInventory([]);
+          setKeywords([]);
+          setLoading(false);
+          return;
+        }
+
+        // Step 2: Fetch inventory for selected dealership (UUID schema)
+        const { data: invData, error: invError } = await supabase
+          .from('inventory')
+          .select('*')
+          .eq('dealership_id', dId);
+
+        if (invError) throw invError;
+        setInventory(invData || []);
+
+        // Step 3: Fetch keyword rankings for dealership (from seo_keywords table with CPC)
+        const { data: kwData, error: kwError } = await supabase
+          .from('seo_keywords')
+          .select('*')
+          .eq('dealership_id', dId)
+          .order('cpc', { ascending: false })
+          .limit(20);
+
+        if (kwError) throw kwError;
+        setKeywords(kwData || []);
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, [selectedDealership]);
+
+  // Calculate inventory velocity (top 5 models by count)
+  const inventoryByModel = inventory
+    .reduce((acc: Record<string, { model: string; stock: number; avgPrice: number; totalPrice: number }>, vehicle) => {
+      const key = `${vehicle.make} ${vehicle.model}`;
+      if (!acc[key]) {
+        acc[key] = { model: key, stock: 0, avgPrice: 0, totalPrice: 0 };
+      }
+      acc[key].stock++;
+      acc[key].totalPrice += vehicle.price || 0;
+      acc[key].avgPrice = acc[key].totalPrice / acc[key].stock;
+      return acc;
+    }, {});
+
+  const inventoryData = Object.values(inventoryByModel)
+    .sort((a, b) => b.stock - a.stock)
+    .slice(0, 5)
+    .map(m => ({
+      model: m.model,
+      stock: m.stock,
+      velocity: parseFloat((m.stock / 30 * 7).toFixed(1))  // Estimate: velocity = stock/30 days * 7
+    }));
+
+  // Position-based CTR estimates for organic search
+  const getCTR = (rank: number) => {
+    if (rank === 0 || rank > 100) return 0.001;
+    if (rank === 1) return 0.30;
+    if (rank <= 3) return 0.15;
+    if (rank <= 10) return 0.05;
+    if (rank <= 30) return 0.01;
+    return 0.001;
+  };
+
+  // Map keywords for display with CPC-based traffic value
+  const seoKeywords = keywords.slice(0, 5).map(kw => {
+    const rank = kw.ranking_position || 100;
+    const volume = kw.search_volume || 0;
+    const cpc = kw.cpc || 2.50;  // Default $2.50 if missing
+    const ctr = getCTR(rank);
+    const estClicks = Math.round(volume * ctr);
+    const trafficValue = estClicks * cpc;
+
+    return {
+      keyword: kw.keyword,
+      rank,
+      searchVolume: volume,
+      cpc,
+      estClicks,
+      trafficValue,
+      status: rank <= 10 ? 'success' : rank <= 30 ? 'warning' : 'danger',
+    };
+  });
 
   const tabs = [
     { id: 'inventory', label: 'Inventory Velocity' },
@@ -33,10 +161,10 @@ export function ExecutiveOverview() {
       {/* Header */}
       <div className="mb-8">
         <h1 className="font-semibold mb-2" style={{ fontSize: '36px', color: '#F1F5F9' }}>
-          Mid-State Chevrolet • Flatwoods, WV
+          {selectedDealership}
         </h1>
         <p style={{ fontSize: '18px', color: '#94A3B8' }}>
-          50-Mile Conquest Dashboard • Last refresh: 2 min ago
+          50-Mile Conquest Dashboard {loading ? '• Loading...' : `• ${inventory.length} vehicles in stock`}
         </p>
       </div>
 
@@ -44,34 +172,38 @@ export function ExecutiveOverview() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
         <KPICard
           metric="Live Inventory"
-          value="306"
+          value={loading ? "..." : inventory.length.toString()}
           sub="vehicles in stock"
-          change="+12 this week"
+          change={loading ? "" : `${selectedDealership}`}
           variant="info"
+          trend="neutral"
           icon={Package}
         />
         <KPICard
-          metric="Monthly Sales"
-          value="121"
-          sub="new units (avg)"
-          change="+8.3% MoM"
+          metric="Top Keyword VCP"
+          value={loading ? "..." : keywords.length > 0 ? `$${keywords[0].cpc?.toFixed(2) || '0.00'}` : "$0.00"}
+          sub="value per click (SEO potential)"
+          change={loading ? "" : keywords.length > 0 ? keywords[0].keyword : "No data"}
           variant="success"
+          trend="neutral"
           icon={DollarSign}
         />
         <KPICard
-          metric="Local Market Share"
-          value="15.5%"
-          sub="50-mi radius"
-          change="+2.1%"
+          metric="Market Metrics"
+          value="Coming Soon"
+          sub="sales data integration"
+          change="MAP data ready"
           variant="success"
+          trend="neutral"
           icon={TrendingUp}
         />
         <KPICard
-          metric="Est. SEO Traffic"
-          value="~81K"
-          sub="monthly clicks"
-          change="+15.7%"
+          metric="Est. SEO Value"
+          value={loading ? "..." : `$${Math.round(keywords.reduce((sum, k) => sum + ((k.search_volume || 0) * 0.05 * (k.cpc || 2.50)), 0)).toLocaleString()}`}
+          sub="monthly traffic value"
+          change={loading ? "" : `${keywords.length} keywords tracked`}
           variant="warning"
+          trend="neutral"
           icon={Search}
         />
       </div>
@@ -173,10 +305,10 @@ export function ExecutiveOverview() {
                     Your Rank
                   </th>
                   <th className="text-left p-3" style={{ fontSize: '14px', color: '#94A3B8', fontWeight: '500' }}>
-                    Est. Clicks
+                    CPC
                   </th>
                   <th className="text-left p-3" style={{ fontSize: '14px', color: '#94A3B8', fontWeight: '500' }}>
-                    Opportunity
+                    Traffic Value
                   </th>
                 </tr>
               </thead>
@@ -216,10 +348,10 @@ export function ExecutiveOverview() {
                         </span>
                       </td>
                       <td className="p-3" style={{ fontSize: '14px', color: '#F1F5F9' }}>
-                        {keyword.clicks.toLocaleString()}
+                        ${keyword.cpc.toFixed(2)}
                       </td>
-                      <td className="p-3" style={{ fontSize: '14px', color: statusColors[keyword.status as keyof typeof statusColors] }}>
-                        {statusLabels[keyword.status as keyof typeof statusLabels]}
+                      <td className="p-3" style={{ fontSize: '14px', color: '#10B981' }}>
+                        ${keyword.trafficValue.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}/mo
                       </td>
                     </tr>
                   );

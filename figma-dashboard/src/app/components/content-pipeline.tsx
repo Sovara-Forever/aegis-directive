@@ -107,12 +107,12 @@ export function ContentPipeline() {
                   fontSize: '14px',
                 }}
               >
-                <option value="">Select model...</option>
-                <option value="silverado">Silverado 1500</option>
-                <option value="silverado2500">Silverado 2500</option>
-                <option value="equinox">Equinox</option>
-                <option value="trax">Trax</option>
-                <option value="general">General/Location</option>
+                <option value="" style={{ backgroundColor: '#0F172A', color: '#F1F5F9' }}>Select model...</option>
+                <option value="silverado" style={{ backgroundColor: '#0F172A', color: '#F1F5F9' }}>Silverado 1500</option>
+                <option value="silverado2500" style={{ backgroundColor: '#0F172A', color: '#F1F5F9' }}>Silverado 2500</option>
+                <option value="equinox" style={{ backgroundColor: '#0F172A', color: '#F1F5F9' }}>Equinox</option>
+                <option value="trax" style={{ backgroundColor: '#0F172A', color: '#F1F5F9' }}>Trax</option>
+                <option value="general" style={{ backgroundColor: '#0F172A', color: '#F1F5F9' }}>General/Location</option>
               </select>
             </div>
             <div>
@@ -130,10 +130,10 @@ export function ContentPipeline() {
                   fontSize: '14px',
                 }}
               >
-                <option value="showcase">Showcase Page</option>
-                <option value="comparison">Comparison Guide</option>
-                <option value="guide">Buyer's Guide</option>
-                <option value="local">Local Landing Page</option>
+                <option value="showcase" style={{ backgroundColor: '#0F172A', color: '#F1F5F9' }}>Showcase Page</option>
+                <option value="comparison" style={{ backgroundColor: '#0F172A', color: '#F1F5F9' }}>Comparison Guide</option>
+                <option value="guide" style={{ backgroundColor: '#0F172A', color: '#F1F5F9' }}>Buyer's Guide</option>
+                <option value="local" style={{ backgroundColor: '#0F172A', color: '#F1F5F9' }}>Local Landing Page</option>
               </select>
             </div>
           </div>

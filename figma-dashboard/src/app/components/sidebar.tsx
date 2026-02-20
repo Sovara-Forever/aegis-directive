@@ -1,24 +1,29 @@
-import { 
-  Home, 
-  Target, 
-  AlertTriangle, 
-  FileText, 
-  Calculator, 
-  Database, 
+import {
+  Home,
+  Target,
+  AlertTriangle,
+  FileText,
+  Calculator,
+  Database,
   Settings,
-  ChevronLeft
+  ChevronLeft,
+  LayoutDashboard
 } from 'lucide-react';
 import { useState } from 'react';
+import { DealershipSelector } from './dealership-selector';
 
 interface SidebarProps {
   activePage: string;
   onNavigate: (page: string) => void;
+  selectedDealership: string;
+  onDealershipChange: (dealership: string) => void;
 }
 
-export function Sidebar({ activePage, onNavigate }: SidebarProps) {
+export function Sidebar({ activePage, onNavigate, selectedDealership, onDealershipChange }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const navItems = [
+    { id: 'overview', label: 'Overview Dashboard', icon: LayoutDashboard },
     { id: 'executive', label: 'Executive Overview', icon: Home },
     { id: 'competitor', label: 'Competitor Insights', icon: Target },
     { id: 'waste', label: 'Waste Audit', icon: AlertTriangle },
@@ -49,6 +54,12 @@ export function Sidebar({ activePage, onNavigate }: SidebarProps) {
               <p className="mt-1" style={{ fontSize: '12px', color: '#94A3B8' }}>
                 Conquest Intelligence
               </p>
+              <div className="mt-4">
+                <DealershipSelector
+                  selectedDealership={selectedDealership}
+                  onDealershipChange={onDealershipChange}
+                />
+              </div>
             </>
           )}
           {isCollapsed && (
