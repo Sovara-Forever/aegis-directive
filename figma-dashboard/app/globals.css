@@ -148,3 +148,15 @@ body {
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
 }
+
+/* Aegis Select Item Focus Styles - White Border, No Background Fill */
+[data-radix-select-content] [data-radix-collection-item]:focus {
+  background-color: transparent !important;
+  border: 2px solid #F1F5F9 !important;
+  outline: none;
+}
+
+[data-radix-select-content] [data-radix-collection-item]:hover {
+  background-color: rgba(241, 245, 249, 0.1) !important;
+  border: 1px solid #F1F5F9;
+}

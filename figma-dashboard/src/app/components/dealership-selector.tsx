@@ -54,16 +54,19 @@ export const DealershipSelector: React.FC<DealershipSelectorProps> = ({
   }, []);
 
   return (
-    <div className="flex items-center gap-2">
-      <span style={{ fontSize: '14px', color: '#F1F5F9' }}>Dealership:</span>
+    <div className="flex flex-col gap-2">
+      <span style={{ fontSize: '12px', color: '#94A3B8', fontWeight: '500' }}>Dealership:</span>
       <Select value={selectedDealership} onValueChange={onDealershipChange}>
         <SelectTrigger
-          className="w-[250px]"
+          className="w-full"
           style={{
             backgroundColor: '#0F172A',
             borderColor: '#334155',
             color: '#F1F5F9',
-            fontSize: '14px'
+            fontSize: '13px',
+            padding: '8px 12px',
+            height: 'auto',
+            minHeight: '36px'
           }}
         >
           <SelectValue placeholder="Select dealership" />
@@ -86,7 +89,10 @@ export const DealershipSelector: React.FC<DealershipSelectorProps> = ({
                 value={dealer.name}
                 style={{
                   color: '#F1F5F9',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  backgroundColor: 'transparent',
+                  fontSize: '13px',
+                  padding: '8px 12px'
                 }}
               >
                 {dealer.name}

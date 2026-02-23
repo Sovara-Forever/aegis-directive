@@ -17,11 +17,20 @@ interface Projections {
   closeRate: number;
 }
 
+interface TrendData {
+  weeklyAvg: number;
+  source: string;
+  confidence: 'high' | 'medium' | 'low';
+  actualDOL?: number;
+  goalDOL?: number;
+}
+
 interface InventoryTrend {
-  newTrend: number;
-  usedTrend: number;
-  cpoTrend: number;
+  newTrend: TrendData;
+  usedTrend: TrendData;
+  cpoTrend: TrendData;
   totalCount: number;
+  latestSnapshotDate?: string;
 }
 
 export function OverviewDashboard({ selectedDealership }: OverviewDashboardProps) {
@@ -36,9 +45,9 @@ export function OverviewDashboard({ selectedDealership }: OverviewDashboardProps
   });
 
   const [inventoryTrend, setInventoryTrend] = useState<InventoryTrend>({
-    newTrend: 0,
-    usedTrend: 0,
-    cpoTrend: 0,
+    newTrend: { weeklyAvg: 0, source: 'loading', confidence: 'low' },
+    usedTrend: { weeklyAvg: 0, source: 'loading', confidence: 'low' },
+    cpoTrend: { weeklyAvg: 0, source: 'loading', confidence: 'low' },
     totalCount: 0
   });
 
@@ -47,6 +56,126 @@ export function OverviewDashboard({ selectedDealership }: OverviewDashboardProps
   useEffect(() => {
     loadInventoryTrends();
   }, [selectedDealership]);
+
+  // Helper: Match vehicle condition
+  function matchesCondition(vehicle: any, condition: 'new' | 'used' | 'cpo'): boolean {
+    const mileage = vehicle.mileage || 0;
+    const trim = (vehicle.trim || '').toLowerCase();
+    const modelName = (vehicle.model_name || '').toLowerCase();
+
+    if (condition === 'new') {
+      return mileage < 100 && !trim.includes('certified') && !modelName.includes('certified');
+    } else if (condition === 'cpo') {
+      return trim.includes('certified') || modelName.includes('certified');
+    } else { // 'used'
+      return mileage >= 100 && !trim.includes('certified') && !modelName.includes('certified');
+    }
+  }
+
+  // Helper: Group inventory snapshots by date
+  function groupByDate(snapshots: any[]): any[][] {
+    const grouped = new Map<string, any[]>();
+
+    snapshots.forEach(vehicle => {
+      const date = vehicle.ingested_at ? new Date(vehicle.ingested_at).toDateString() : 'unknown';
+      if (!grouped.has(date)) {
+        grouped.set(date, []);
+      }
+      grouped.get(date)!.push(vehicle);
+    });
+
+    return Array.from(grouped.values());
+  }
+
+  // Tier 1: Real sales from market_sales table
+  async function calculateTier1_RealSales(dealershipId: string, condition: 'new' | 'used' | 'cpo'): Promise<TrendData | null> {
+    try {
+      const { data: marketData, error } = await supabase
+        .from('market_sales')
+        .select('units_sold, month, model_name')
+        .eq('dealership_id', dealershipId);
+
+      if (error || !marketData || marketData.length === 0) {
+        return null;
+      }
+
+      const uniqueMonths = new Set(marketData.map(d => d.month)).size;
+      if (uniqueMonths === 0) return null;
+
+      const totalSales = marketData
+        .filter(d => {
+          const modelName = (d.model_name || '').toLowerCase();
+          if (condition === 'new') {
+            return !modelName.includes('used') && !modelName.includes('certified');
+          } else if (condition === 'cpo') {
+            return modelName.includes('certified');
+          } else {
+            return modelName.includes('used') && !modelName.includes('certified');
+          }
+        })
+        .reduce((sum, d) => sum + (d.units_sold || 0), 0);
+
+      const weeklyAvg = Math.floor((totalSales / uniqueMonths / 30) * 7);
+
+      return {
+        weeklyAvg,
+        source: 'market_sales',
+        confidence: 'high'
+      };
+    } catch (err) {
+      console.error('Tier 1 calculation error:', err);
+      return null;
+    }
+  }
+
+  // Tier 2: Inventory delta turn rate
+  async function calculateTier2_InventoryDelta(dealershipId: string, condition: 'new' | 'used' | 'cpo', allInventory: any[]): Promise<TrendData | null> {
+    try {
+      if (!allInventory || allInventory.length === 0) return null;
+
+      const snapshots = groupByDate(allInventory);
+
+      if (snapshots.length < 2) return null;
+
+      const latest = snapshots[0].filter(v => matchesCondition(v, condition));
+      const previous = snapshots[1].filter(v => matchesCondition(v, condition));
+
+      const soldVINs = previous
+        .map(v => v.vin)
+        .filter(vin => !latest.some(v2 => v2.vin === vin));
+
+      const soldCount = soldVINs.length;
+
+      if (soldCount === 0) return null;
+
+      const weeklyTurn = Math.floor((soldCount / 45) * 7);
+      const actualDOL = Math.floor((latest.length / soldCount) * 7);
+
+      return {
+        weeklyAvg: weeklyTurn,
+        source: 'inventory_delta',
+        confidence: 'medium',
+        actualDOL,
+        goalDOL: 45
+      };
+    } catch (err) {
+      console.error('Tier 2 calculation error:', err);
+      return null;
+    }
+  }
+
+  // Tier 3: Simple count fallback (45-day DOL)
+  function calculateTier3_SimpleCount(inventory: any[], condition: 'new' | 'used' | 'cpo'): TrendData {
+    const count = inventory.filter(v => matchesCondition(v, condition)).length;
+    const weeklyAvg = Math.floor((count / 45) * 7);
+
+    return {
+      weeklyAvg,
+      source: 'inventory_count',
+      confidence: 'low',
+      goalDOL: 45
+    };
+  }
 
   async function loadInventoryTrends() {
     try {
@@ -67,20 +196,52 @@ export function OverviewDashboard({ selectedDealership }: OverviewDashboardProps
 
       const dId = dealerData.id;
 
-      // Fetch inventory for trending calculation
+      // Fetch inventory with timestamps for delta calculation
       const { data: invData, error: invError } = await supabase
         .from('inventory')
         .select('*')
-        .eq('dealership_id', dId);
+        .eq('dealership_id', dId)
+        .order('ingested_at', { ascending: false });
 
       if (invError) throw invError;
 
       const inventory = invData || [];
+
+      // Calculate trends using 3-tier logic
+      let newTrend: TrendData;
+      let usedTrend: TrendData;
+      let cpoTrend: TrendData;
+
+      // Try Tier 1: Real sales data
+      const newTier1 = await calculateTier1_RealSales(dId, 'new');
+      const usedTier1 = await calculateTier1_RealSales(dId, 'used');
+      const cpoTier1 = await calculateTier1_RealSales(dId, 'cpo');
+
+      // Try Tier 2: Inventory delta (if Tier 1 failed)
+      const newTier2 = !newTier1 ? await calculateTier2_InventoryDelta(dId, 'new', inventory) : null;
+      const usedTier2 = !usedTier1 ? await calculateTier2_InventoryDelta(dId, 'used', inventory) : null;
+      const cpoTier2 = !cpoTier1 ? await calculateTier2_InventoryDelta(dId, 'cpo', inventory) : null;
+
+      // Fall back to Tier 3: Simple count
+      newTrend = newTier1 || newTier2 || calculateTier3_SimpleCount(inventory, 'new');
+      usedTrend = usedTier1 || usedTier2 || calculateTier3_SimpleCount(inventory, 'used');
+      cpoTrend = cpoTier1 || cpoTier2 || calculateTier3_SimpleCount(inventory, 'cpo');
+
+      console.log('Reality Check - New:', newTrend.source, newTrend.confidence);
+      console.log('Reality Check - Used:', usedTrend.source, usedTrend.confidence);
+      console.log('Reality Check - CPO:', cpoTrend.source, cpoTrend.confidence);
+
+      // Get latest snapshot date
+      const latestSnapshotDate = inventory.length > 0 && inventory[0].ingested_at
+        ? new Date(inventory[0].ingested_at).toLocaleDateString()
+        : undefined;
+
       setInventoryTrend({
-        newTrend: Math.floor(inventory.filter(v => v.mileage === 0 || v.mileage < 100).length / 30 * 7),
-        usedTrend: Math.floor(inventory.filter(v => v.mileage >= 100 && !v.trim?.toLowerCase().includes('certified')).length / 30 * 7),
-        cpoTrend: Math.floor(inventory.filter(v => v.trim?.toLowerCase().includes('certified')).length / 30 * 7),
-        totalCount: inventory.length
+        newTrend,
+        usedTrend,
+        cpoTrend,
+        totalCount: inventory.length,
+        latestSnapshotDate
       });
 
     } catch (error) {
@@ -110,7 +271,7 @@ export function OverviewDashboard({ selectedDealership }: OverviewDashboardProps
   const totalUnits = projections.newVehicleSales + projections.usedVehicleSales + projections.cpoVehicleSales;
   const cpa = totalUnits > 0 ? projections.marketingExpense / totalUnits : 0;
 
-  const totalTrend = inventoryTrend.newTrend + inventoryTrend.usedTrend + inventoryTrend.cpoTrend;
+  const totalTrend = inventoryTrend.newTrend.weeklyAvg + inventoryTrend.usedTrend.weeklyAvg + inventoryTrend.cpoTrend.weeklyAvg;
   const goalCompletionProbability = totalTrend > 0 ? Math.min(100, (totalTrend / totalUnits) * 100) : 50;
 
   return (
@@ -296,9 +457,19 @@ export function OverviewDashboard({ selectedDealership }: OverviewDashboardProps
 
       {/* Reality Check Table */}
       <div className="rounded-xl p-6" style={{ backgroundColor: '#1E293B', border: '1px solid #334155' }}>
-        <h3 className="text-xl font-semibold mb-4" style={{ color: '#F1F5F9' }}>
-          Reality Check: Goals vs. Inventory Trends
-        </h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-semibold" style={{ color: '#F1F5F9' }}>
+            Reality Check: Goals vs. Inventory Trends
+          </h3>
+          <div className="text-sm" style={{ color: '#94A3B8' }}>
+            Data as of: {new Date().toLocaleDateString()}
+            {inventoryTrend.latestSnapshotDate && (
+              <span className="ml-2">
+                (Latest snapshot: {inventoryTrend.latestSnapshotDate})
+              </span>
+            )}
+          </div>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -321,25 +492,40 @@ export function OverviewDashboard({ selectedDealership }: OverviewDashboardProps
               <tr style={{ borderBottom: '1px solid #334155' }}>
                 <td className="p-3" style={{ fontSize: '14px', color: '#F1F5F9' }}>New Vehicles</td>
                 <td className="p-3 text-right" style={{ fontSize: '14px', color: '#F1F5F9' }}>{projections.newVehicleSales}</td>
-                <td className="p-3 text-right" style={{ fontSize: '14px', color: '#0EA5E9' }}>{inventoryTrend.newTrend}/week</td>
-                <td className="p-3 text-right" style={{ fontSize: '14px', color: projections.newVehicleSales > inventoryTrend.newTrend * 4 ? '#EF4444' : '#10B981' }}>
-                  {projections.newVehicleSales - (inventoryTrend.newTrend * 4)} units
+                <td className="p-3 text-right" style={{ fontSize: '14px', color: '#0EA5E9' }}>
+                  {inventoryTrend.newTrend.weeklyAvg}/week
+                  <span className="text-xs ml-2" style={{ color: '#94A3B8' }}>
+                    ({inventoryTrend.newTrend.source} - {inventoryTrend.newTrend.confidence})
+                  </span>
+                </td>
+                <td className="p-3 text-right" style={{ fontSize: '14px', color: projections.newVehicleSales > inventoryTrend.newTrend.weeklyAvg * 4 ? '#EF4444' : '#10B981' }}>
+                  {projections.newVehicleSales - (inventoryTrend.newTrend.weeklyAvg * 4)} units
                 </td>
               </tr>
               <tr style={{ borderBottom: '1px solid #334155' }}>
                 <td className="p-3" style={{ fontSize: '14px', color: '#F1F5F9' }}>Used Vehicles</td>
                 <td className="p-3 text-right" style={{ fontSize: '14px', color: '#F1F5F9' }}>{projections.usedVehicleSales}</td>
-                <td className="p-3 text-right" style={{ fontSize: '14px', color: '#0EA5E9' }}>{inventoryTrend.usedTrend}/week</td>
-                <td className="p-3 text-right" style={{ fontSize: '14px', color: projections.usedVehicleSales > inventoryTrend.usedTrend * 4 ? '#EF4444' : '#10B981' }}>
-                  {projections.usedVehicleSales - (inventoryTrend.usedTrend * 4)} units
+                <td className="p-3 text-right" style={{ fontSize: '14px', color: '#0EA5E9' }}>
+                  {inventoryTrend.usedTrend.weeklyAvg}/week
+                  <span className="text-xs ml-2" style={{ color: '#94A3B8' }}>
+                    ({inventoryTrend.usedTrend.source} - {inventoryTrend.usedTrend.confidence})
+                  </span>
+                </td>
+                <td className="p-3 text-right" style={{ fontSize: '14px', color: projections.usedVehicleSales > inventoryTrend.usedTrend.weeklyAvg * 4 ? '#EF4444' : '#10B981' }}>
+                  {projections.usedVehicleSales - (inventoryTrend.usedTrend.weeklyAvg * 4)} units
                 </td>
               </tr>
               <tr>
                 <td className="p-3" style={{ fontSize: '14px', color: '#F1F5F9' }}>CPO Vehicles</td>
                 <td className="p-3 text-right" style={{ fontSize: '14px', color: '#F1F5F9' }}>{projections.cpoVehicleSales}</td>
-                <td className="p-3 text-right" style={{ fontSize: '14px', color: '#0EA5E9' }}>{inventoryTrend.cpoTrend}/week</td>
-                <td className="p-3 text-right" style={{ fontSize: '14px', color: projections.cpoVehicleSales > inventoryTrend.cpoTrend * 4 ? '#EF4444' : '#10B981' }}>
-                  {projections.cpoVehicleSales - (inventoryTrend.cpoTrend * 4)} units
+                <td className="p-3 text-right" style={{ fontSize: '14px', color: '#0EA5E9' }}>
+                  {inventoryTrend.cpoTrend.weeklyAvg}/week
+                  <span className="text-xs ml-2" style={{ color: '#94A3B8' }}>
+                    ({inventoryTrend.cpoTrend.source} - {inventoryTrend.cpoTrend.confidence})
+                  </span>
+                </td>
+                <td className="p-3 text-right" style={{ fontSize: '14px', color: projections.cpoVehicleSales > inventoryTrend.cpoTrend.weeklyAvg * 4 ? '#EF4444' : '#10B981' }}>
+                  {projections.cpoVehicleSales - (inventoryTrend.cpoTrend.weeklyAvg * 4)} units
                 </td>
               </tr>
             </tbody>
@@ -350,7 +536,8 @@ export function OverviewDashboard({ selectedDealership }: OverviewDashboardProps
             <strong style={{ color: '#F1F5F9' }}>Current Inventory:</strong> {inventoryTrend.totalCount} vehicles in stock
           </p>
           <p style={{ fontSize: '12px', color: '#64748B', marginTop: '8px' }}>
-            Weekly trending calculated as: (inventory_count / 30 days) * 7, rounded down for conservative estimates.
+            <strong style={{ color: '#F1F5F9' }}>3-Tier Reality Check Logic:</strong> Attempts real sales data first (high confidence),
+            then inventory delta with 45-day DOL (medium confidence), finally simple count with 45-day DOL (low confidence fallback).
             {loading && ' Loading latest data...'}
           </p>
         </div>
