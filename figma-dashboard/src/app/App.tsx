@@ -1,3 +1,10 @@
+/**
+ * Aegis Directive - Main Application
+ * Landing page + Dashboard with global dealer state
+ *
+ * Partnership: Sean Jeremy Chappell (CEO) + Alpha Claudette Chappell (CTO)
+ */
+
 import { useState } from "react";
 import { Sidebar } from "./components/sidebar";
 import { ExecutiveOverview } from "./components/executive-overview";
@@ -6,9 +13,11 @@ import { WasteAudit } from "./components/waste-audit";
 import ContentGeneration from "./components/content-generation";
 import { ROIProjector } from "./components/roi-projector";
 import { OverviewDashboard } from "./components/overview-dashboard";
+import { Hero } from "./components/hero";
 import { Menu } from "lucide-react";
 
 export default function App() {
+  const [mode, setMode] = useState<'landing' | 'dashboard'>('landing');
   const [activePage, setActivePage] = useState("overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedDealership, setSelectedDealership] = useState("Mid-State Chevrolet & Buick");
@@ -68,9 +77,14 @@ export default function App() {
           </div>
         );
       default:
-        return <ExecutiveOverview />;
+        return <ExecutiveOverview selectedDealership={selectedDealership} />;
     }
   };
+
+  // Show Hero landing page first
+  if (mode === 'landing') {
+    return <Hero onEnterDashboard={() => setMode('dashboard')} />;
+  }
 
   return (
     <div
