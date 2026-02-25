@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { KPICard } from './kpi-card';
+import { MarketingBreakdown } from './marketing-breakdown';
 import { DollarSign, TrendingUp, Target, Percent } from 'lucide-react';
 
 interface OverviewDashboardProps {
@@ -542,6 +543,12 @@ export function OverviewDashboard({ selectedDealership }: OverviewDashboardProps
           </p>
         </div>
       </div>
+
+      {/* Marketing Budget Breakdown */}
+      <MarketingBreakdown
+        totalBudget={projections.marketingExpense}
+        onBudgetChange={(newTotal) => handleInputChange('marketingExpense', newTotal)}
+      />
 
       {/* Revenue Breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
