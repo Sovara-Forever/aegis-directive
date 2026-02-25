@@ -227,7 +227,7 @@ export function ExecutiveOverview({ selectedDealership }: ExecutiveOverviewProps
                   className="absolute bottom-0 left-0 right-0"
                   style={{
                     height: '3px',
-                    backgroundColor: '#0066CC',
+                    backgroundColor: '#10B981',
                   }}
                 />
               )}

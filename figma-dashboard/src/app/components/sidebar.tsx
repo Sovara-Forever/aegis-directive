@@ -63,7 +63,7 @@ export function Sidebar({ activePage, onNavigate, selectedDealership, onDealersh
             </>
           )}
           {isCollapsed && (
-            <div className="font-bold text-center" style={{ fontSize: '20px', color: '#0066CC' }}>
+            <div className="font-bold text-center" style={{ fontSize: '20px', color: '#10B981' }}>
               A
             </div>
           )}
@@ -84,7 +84,7 @@ export function Sidebar({ activePage, onNavigate, selectedDealership, onDealersh
                     isCollapsed ? 'justify-center' : ''
                   }`}
                   style={{
-                    backgroundColor: isActive ? '#0066CC' : 'transparent',
+                    backgroundColor: isActive ? '#10B981' : 'transparent',
                     color: isActive ? '#F1F5F9' : '#94A3B8',
                   }}
                   onMouseEnter={(e) => {
