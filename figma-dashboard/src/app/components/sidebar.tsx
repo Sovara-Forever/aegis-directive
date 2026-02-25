@@ -7,7 +7,8 @@ import {
   Database,
   Settings,
   ChevronLeft,
-  LayoutDashboard
+  LayoutDashboard,
+  Map
 } from 'lucide-react';
 import { useState } from 'react';
 import { DealershipSelector } from './dealership-selector';
@@ -25,6 +26,7 @@ export function Sidebar({ activePage, onNavigate, selectedDealership, onDealersh
   const navItems = [
     { id: 'overview', label: 'Overview Dashboard', icon: LayoutDashboard },
     { id: 'executive', label: 'Executive Overview', icon: Home },
+    { id: 'map', label: 'Conquest Territory', icon: Map },
     { id: 'competitor', label: 'Competitor Insights', icon: Target },
     { id: 'waste', label: 'Waste Audit', icon: AlertTriangle },
     { id: 'content', label: 'Content Pipeline', icon: FileText },
@@ -48,7 +50,7 @@ export function Sidebar({ activePage, onNavigate, selectedDealership, onDealersh
         <div className="p-6 border-b" style={{ borderColor: '#334155' }}>
           {!isCollapsed && (
             <>
-              <h1 className="font-semibold" style={{ fontSize: '24px', color: '#0066CC' }}>
+              <h1 className="font-semibold" style={{ fontSize: '24px', color: '#10B981' }}>
                 Aegis
               </h1>
               <p className="mt-1" style={{ fontSize: '12px', color: '#94A3B8' }}>
@@ -140,7 +142,7 @@ export function Sidebar({ activePage, onNavigate, selectedDealership, onDealersh
         <div className="p-4 border-t" style={{ borderColor: '#334155' }}>
           {!isCollapsed && (
             <p className="text-center" style={{ fontSize: '12px', color: '#94A3B8' }}>
-              Aegis Intelligence Alpha V1.2
+              Aegis Intelligence Alpha V1.5
               <br />
               <span style={{ fontSize: '11px', color: '#64748B' }}>Updated Feb 2026</span>
             </p>

@@ -13,6 +13,7 @@ import { WasteAudit } from "./components/waste-audit";
 import ContentGeneration from "./components/content-generation";
 import { ROIProjector } from "./components/roi-projector";
 import { OverviewDashboard } from "./components/overview-dashboard";
+import { ConquestMap } from "./components/conquest-map";
 import { Hero } from "./components/hero";
 import { Menu } from "lucide-react";
 
@@ -28,6 +29,8 @@ export default function App() {
         return <OverviewDashboard selectedDealership={selectedDealership} />;
       case "executive":
         return <ExecutiveOverview selectedDealership={selectedDealership} />;
+      case "map":
+        return <ConquestMap selectedDealership={selectedDealership} />;
       case "competitor":
         return <CompetitorInsights />;
       case "waste":
