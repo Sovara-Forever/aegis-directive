@@ -66,8 +66,8 @@ interface Dealership {
   city?: string;
   state?: string;
   zip_code?: string;
-  lat: number;
-  lng: number;
+  latitude: number;
+  longitude: number;
   inventory_count?: number;
   has_sales_data?: boolean;
 }
@@ -114,9 +114,9 @@ export function ConquestMap({ selectedDealership }: ConquestMapProps) {
         // Fetch dealerships with geocoding
         const { data: dealerData, error: dealerError } = await supabase
           .from('dealerships')
-          .select('id, name, domain, address, city, state, zip_code, lat, lng')
-          .not('lat', 'is', null)
-          .not('lng', 'is', null);
+          .select('id, name, domain, address, city, state, zip_code, latitude, longitude')
+          .not('latitude', 'is', null)
+          .not('longitude', 'is', null);
 
         if (dealerError) throw dealerError;
 
@@ -187,12 +187,12 @@ export function ConquestMap({ selectedDealership }: ConquestMapProps) {
 
       // Calculate distance using Haversine formula
       const R = 3959; // Earth radius in miles
-      const dLat = ((d.lat - selectedDealer.lat) * Math.PI) / 180;
-      const dLon = ((d.lng - selectedDealer.lng) * Math.PI) / 180;
+      const dLat = ((d.latitude - selectedDealer.latitude) * Math.PI) / 180;
+      const dLon = ((d.longitude - selectedDealer.longitude) * Math.PI) / 180;
       const a =
         Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos((selectedDealer.lat * Math.PI) / 180) *
-          Math.cos((d.lat * Math.PI) / 180) *
+        Math.cos((selectedDealer.latitude * Math.PI) / 180) *
+          Math.cos((d.latitude * Math.PI) / 180) *
           Math.sin(dLon / 2) *
           Math.sin(dLon / 2);
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
@@ -204,7 +204,7 @@ export function ConquestMap({ selectedDealership }: ConquestMapProps) {
 
   // Map center and zoom
   const mapCenter: [number, number] = selectedDealer
-    ? [selectedDealer.lat, selectedDealer.lng]
+    ? [selectedDealer.latitude, selectedDealer.longitude]
     : [38.4, -82.4]; // Default to WV area
 
   const mapZoom = radiusMiles <= 25 ? 10 : radiusMiles <= 50 ? 9 : 8;
@@ -303,7 +303,7 @@ export function ConquestMap({ selectedDealership }: ConquestMapProps) {
             {/* 50-mile radius circle */}
             {selectedDealer && (
               <Circle
-                center={[selectedDealer.lat, selectedDealer.lng]}
+                center={[selectedDealer.latitude, selectedDealer.longitude]}
                 radius={radiusMeters}
                 pathOptions={{
                   color: COLORS.emerald,
@@ -318,7 +318,7 @@ export function ConquestMap({ selectedDealership }: ConquestMapProps) {
             {/* Selected dealership marker */}
             {selectedDealer && (
               <Marker
-                position={[selectedDealer.lat, selectedDealer.lng]}
+                position={[selectedDealer.latitude, selectedDealer.longitude]}
                 icon={createCustomIcon(COLORS.emerald, true)}
               >
                 <Popup>
@@ -351,7 +351,7 @@ export function ConquestMap({ selectedDealership }: ConquestMapProps) {
             {competitorsInRadius.map((dealer) => (
               <Marker
                 key={dealer.id}
-                position={[dealer.lat, dealer.lng]}
+                position={[dealer.latitude, dealer.longitude]}
                 icon={createCustomIcon(dealer.has_sales_data ? COLORS.blue : COLORS.amber, false)}
               >
                 <Popup>
