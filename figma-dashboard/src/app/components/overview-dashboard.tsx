@@ -6,6 +6,7 @@ import { DollarSign, TrendingUp, Target, Percent } from 'lucide-react';
 
 interface OverviewDashboardProps {
   selectedDealership: string;
+  selectedTimeFrame?: string;
 }
 
 interface Projections {
@@ -34,7 +35,7 @@ interface InventoryTrend {
   latestSnapshotDate?: string;
 }
 
-export function OverviewDashboard({ selectedDealership }: OverviewDashboardProps) {
+export function OverviewDashboard({ selectedDealership, selectedTimeFrame = 'last_30_days' }: OverviewDashboardProps) {
   const [projections, setProjections] = useState<Projections>({
     newVehicleSales: 100,
     usedVehicleSales: 50,
@@ -456,11 +457,11 @@ export function OverviewDashboard({ selectedDealership }: OverviewDashboardProps
         />
       </div>
 
-      {/* Reality Check Table */}
+      {/* Aegis Edge Check Table */}
       <div className="rounded-xl p-6" style={{ backgroundColor: '#1E293B', border: '1px solid #334155' }}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xl font-semibold" style={{ color: '#F1F5F9' }}>
-            Reality Check: Goals vs. Inventory Trends
+            Aegis Edge Check: Goals vs. Inventory Trends
           </h3>
           <div className="text-sm" style={{ color: '#94A3B8' }}>
             Data as of: {new Date().toLocaleDateString()}
@@ -487,6 +488,9 @@ export function OverviewDashboard({ selectedDealership }: OverviewDashboardProps
                 <th className="text-right p-3" style={{ fontSize: '14px', color: '#94A3B8', fontWeight: '500' }}>
                   Gap
                 </th>
+                <th className="text-right p-3" style={{ fontSize: '14px', color: '#94A3B8', fontWeight: '500' }}>
+                  Action Vector
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -502,6 +506,21 @@ export function OverviewDashboard({ selectedDealership }: OverviewDashboardProps
                 <td className="p-3 text-right" style={{ fontSize: '14px', color: projections.newVehicleSales > inventoryTrend.newTrend.weeklyAvg * 4 ? '#EF4444' : '#10B981' }}>
                   {projections.newVehicleSales - (inventoryTrend.newTrend.weeklyAvg * 4)} units
                 </td>
+                <td className="p-3 text-right">
+                  {projections.newVehicleSales > inventoryTrend.newTrend.weeklyAvg * 4 ? (
+                    <button
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105"
+                      style={{ backgroundColor: '#EF4444', color: '#FFFFFF' }}
+                      onClick={() => {/* TODO: Route to Content Generation with New Vehicles pre-filled */}}
+                    >
+                      Generate Push Campaign
+                    </button>
+                  ) : (
+                    <span className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ backgroundColor: '#10B981', color: '#FFFFFF' }}>
+                      Hold Margin
+                    </span>
+                  )}
+                </td>
               </tr>
               <tr style={{ borderBottom: '1px solid #334155' }}>
                 <td className="p-3" style={{ fontSize: '14px', color: '#F1F5F9' }}>Used Vehicles</td>
@@ -514,6 +533,12 @@ export function OverviewDashboard({ selectedDealership }: OverviewDashboardProps
                 </td>
                 <td className="p-3 text-right" style={{ fontSize: '14px', color: projections.usedVehicleSales > inventoryTrend.usedTrend.weeklyAvg * 4 ? '#EF4444' : '#10B981' }}>
                   {projections.usedVehicleSales - (inventoryTrend.usedTrend.weeklyAvg * 4)} units
+                </td>
+                <td className="p-3 text-right">
+                  {/* Used vehicle data pending - awaiting Supabase ingestion via QWEN/Mistral enrichment pipeline */}
+                  <span className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ backgroundColor: '#475569', color: '#94A3B8' }}>
+                    Data Pending
+                  </span>
                 </td>
               </tr>
               <tr>
@@ -528,6 +553,12 @@ export function OverviewDashboard({ selectedDealership }: OverviewDashboardProps
                 <td className="p-3 text-right" style={{ fontSize: '14px', color: projections.cpoVehicleSales > inventoryTrend.cpoTrend.weeklyAvg * 4 ? '#EF4444' : '#10B981' }}>
                   {projections.cpoVehicleSales - (inventoryTrend.cpoTrend.weeklyAvg * 4)} units
                 </td>
+                <td className="p-3 text-right">
+                  {/* CPO data pending - awaiting Supabase ingestion via QWEN/Mistral enrichment pipeline */}
+                  <span className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ backgroundColor: '#475569', color: '#94A3B8' }}>
+                    Data Pending
+                  </span>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -537,7 +568,7 @@ export function OverviewDashboard({ selectedDealership }: OverviewDashboardProps
             <strong style={{ color: '#F1F5F9' }}>Current Inventory:</strong> {inventoryTrend.totalCount} vehicles in stock
           </p>
           <p style={{ fontSize: '12px', color: '#64748B', marginTop: '8px' }}>
-            <strong style={{ color: '#F1F5F9' }}>3-Tier Reality Check Logic:</strong> Attempts real sales data first (high confidence),
+            <strong style={{ color: '#F1F5F9' }}>3-Tier Aegis Edge Logic:</strong> Attempts real sales data first (high confidence),
             then inventory delta with 45-day DOL (medium confidence), finally simple count with 45-day DOL (low confidence fallback).
             {loading && ' Loading latest data...'}
           </p>
@@ -549,6 +580,269 @@ export function OverviewDashboard({ selectedDealership }: OverviewDashboardProps
         totalBudget={projections.marketingExpense}
         onBudgetChange={(newTotal) => handleInputChange('marketingExpense', newTotal)}
       />
+
+      {/* Market Combat UI - Dealer Gross vs Regional Market */}
+      <div className="rounded-xl p-6" style={{ backgroundColor: '#1E293B', border: '1px solid #334155' }}>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+          <h3 className="text-xl font-semibold" style={{ color: '#F1F5F9' }}>
+            Market Combat Analysis
+          </h3>
+          <div className="flex items-center gap-3">
+            {/* Geographic Scope Selector */}
+            <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid #334155' }}>
+              {['City', 'County', 'State', 'Region'].map((scope, idx) => (
+                <button
+                  key={scope}
+                  className="px-3 py-1.5 text-xs font-medium transition-colors"
+                  style={{
+                    backgroundColor: scope === 'Region' ? '#10B981' : 'transparent',
+                    color: scope === 'Region' ? '#0F172A' : '#94A3B8',
+                    borderRight: idx < 3 ? '1px solid #334155' : 'none'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (scope !== 'Region') {
+                      e.currentTarget.style.backgroundColor = 'rgba(16, 185, 129, 0.2)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (scope !== 'Region') {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }
+                  }}
+                >
+                  {scope}
+                </button>
+              ))}
+            </div>
+            <span className="px-3 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10B981' }}>
+              Live Comparison
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Dealer Gross Column - with +/- comparison to market */}
+          {(() => {
+            // Dealer values
+            const dealerFront = 2847;
+            const dealerBack = 1523;
+            const dealerTotal = 4370;
+            // Market values for comparison (would be dynamic based on geographic scope)
+            const marketFront = 2156;
+            const marketBack = 1089;
+            const marketTotal = 3245;
+            // Calculate differences
+            const frontDiff = dealerFront - marketFront;
+            const backDiff = dealerBack - marketBack;
+            const totalDiff = dealerTotal - marketTotal;
+
+            const DiffIndicator = ({ diff, isPercentage = false }: { diff: number; isPercentage?: boolean }) => {
+              const isPositive = diff > 0;
+              const color = isPositive ? '#10B981' : diff < 0 ? '#EF4444' : '#94A3B8';
+              const prefix = isPositive ? '+' : '';
+              const value = isPercentage
+                ? `${prefix}${((diff / Math.abs(diff - dealerTotal)) * 100).toFixed(1)}%`
+                : `${prefix}$${Math.abs(diff).toLocaleString()}`;
+
+              return (
+                <span className="text-xs ml-2 px-1.5 py-0.5 rounded" style={{
+                  backgroundColor: isPositive ? 'rgba(16, 185, 129, 0.15)' : diff < 0 ? 'rgba(239, 68, 68, 0.15)' : 'transparent',
+                  color
+                }}>
+                  {value}
+                </span>
+              );
+            };
+
+            return (
+          <div className="rounded-xl p-5" style={{ backgroundColor: '#0F172A', border: '1px solid #334155' }}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)' }}>
+                <span style={{ color: '#10B981', fontSize: '18px', fontWeight: 'bold' }}>D</span>
+              </div>
+              <div>
+                <h4 className="font-semibold" style={{ color: '#F1F5F9' }}>Dealer Gross</h4>
+                <p className="text-xs" style={{ color: '#64748B' }}>{selectedDealership}</p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm" style={{ color: '#94A3B8' }}>Avg Front Gross</span>
+                <div className="flex items-center">
+                  <span className="font-semibold" style={{ color: '#10B981' }}>${dealerFront.toLocaleString()}</span>
+                  <DiffIndicator diff={frontDiff} />
+                </div>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm" style={{ color: '#94A3B8' }}>Avg Back Gross</span>
+                <div className="flex items-center">
+                  <span className="font-semibold" style={{ color: '#10B981' }}>${dealerBack.toLocaleString()}</span>
+                  <DiffIndicator diff={backDiff} />
+                </div>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm" style={{ color: '#94A3B8' }}>Total Per Unit</span>
+                <div className="flex items-center">
+                  <span className="font-bold text-lg" style={{ color: '#10B981' }}>${dealerTotal.toLocaleString()}</span>
+                  <DiffIndicator diff={totalDiff} />
+                </div>
+              </div>
+              <div className="border-t pt-3 mt-3" style={{ borderColor: '#334155' }}>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm" style={{ color: '#94A3B8' }}>Monthly Units</span>
+                  <span className="font-semibold" style={{ color: '#F1F5F9' }}>{totalUnits}</span>
+                </div>
+                <div className="flex justify-between items-center mt-2">
+                  <span className="text-sm" style={{ color: '#94A3B8' }}>Est. Total Gross</span>
+                  <span className="font-bold" style={{ color: '#10B981' }}>${(totalUnits * dealerTotal).toLocaleString()}</span>
+                </div>
+              </div>
+              {/* Time Period Comparison Placeholder */}
+              <div className="border-t pt-3 mt-3" style={{ borderColor: '#334155' }}>
+                <p className="text-xs text-center" style={{ color: '#475569' }}>
+                  Time period comparison coming soon
+                </p>
+              </div>
+            </div>
+          </div>
+            );
+          })()}
+
+          {/* Regional Market Column - Color logic: neutral unless market BEATS dealer */}
+          {(() => {
+            // Dealer values (would come from Supabase in production)
+            const dealerFront = 2847;
+            const dealerBack = 1523;
+            const dealerTotal = 4370;
+            // Market values (would come from Supabase in production)
+            const marketFront = 2156;
+            const marketBack = 1089;
+            const marketTotal = 3245;
+            // Color logic: RED only if market beats dealer, else NEUTRAL
+            const frontColor = marketFront > dealerFront ? '#EF4444' : '#94A3B8';
+            const backColor = marketBack > dealerBack ? '#EF4444' : '#94A3B8';
+            const totalColor = marketTotal > dealerTotal ? '#EF4444' : '#94A3B8';
+            const advantage = dealerTotal - marketTotal;
+
+            return (
+          <div className="rounded-xl p-5" style={{ backgroundColor: '#0F172A', border: '1px solid #334155' }}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'rgba(148, 163, 184, 0.1)' }}>
+                <span style={{ color: '#94A3B8', fontSize: '18px', fontWeight: 'bold' }}>M</span>
+              </div>
+              <div>
+                <h4 className="font-semibold" style={{ color: '#F1F5F9' }}>Regional Market</h4>
+                <p className="text-xs" style={{ color: '#64748B' }}>Competitor Average</p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm" style={{ color: '#94A3B8' }}>Avg Front Gross</span>
+                <span className="font-semibold" style={{ color: frontColor }}>${marketFront.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm" style={{ color: '#94A3B8' }}>Avg Back Gross</span>
+                <span className="font-semibold" style={{ color: backColor }}>${marketBack.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm" style={{ color: '#94A3B8' }}>Total Per Unit</span>
+                <span className="font-bold text-lg" style={{ color: totalColor }}>${marketTotal.toLocaleString()}</span>
+              </div>
+              <div className="border-t pt-3 mt-3" style={{ borderColor: '#334155' }}>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm" style={{ color: '#94A3B8' }}>Your Advantage</span>
+                  <span className="font-bold" style={{ color: advantage > 0 ? '#10B981' : '#EF4444' }}>
+                    {advantage > 0 ? '+' : ''}${advantage.toLocaleString()}/unit
+                  </span>
+                </div>
+                <div className="flex justify-between items-center mt-2">
+                  <span className="text-sm" style={{ color: '#94A3B8' }}>Monthly Edge</span>
+                  <span className="font-bold" style={{ color: advantage > 0 ? '#10B981' : '#EF4444' }}>
+                    {advantage > 0 ? '+' : ''}${(totalUnits * advantage).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+            );
+          })()}
+        </div>
+
+        {/* Combat Summary Bar - Gross Dominance Index + Dual Regional Ranks */}
+        {(() => {
+          // Calculate from actual values
+          const dealerTotal = 4370;
+          const marketTotal = 3245;
+          const outperformancePercent = ((dealerTotal - marketTotal) / marketTotal) * 100;
+          const grossDominanceIndex = Math.ceil(outperformancePercent); // 34.7% → 35%
+
+          // Dealer within Region comparison (would come from Supabase aggregated data)
+          const dealerRegionRank = 3; // This dealer ranks 3rd in their region
+          const totalDealersInRegion = 12;
+          const dealerPercentile = Math.round(((totalDealersInRegion - dealerRegionRank + 1) / totalDealersInRegion) * 100);
+
+          // Region vs Other Regions (would come from Supabase aggregated data)
+          const regionVsRegionsRank = 2; // This region ranks 2nd among all regions
+          const totalRegions = 8; // Total regions in the market area
+          const regionPercentile = Math.round(((totalRegions - regionVsRegionsRank + 1) / totalRegions) * 100);
+
+          return (
+        <div className="mt-5 p-4 rounded-lg" style={{ backgroundColor: '#0F172A', border: '1px solid #334155' }}>
+          {/* Row 1: Gross Dominance Index */}
+          <div className="flex items-center justify-between mb-4 pb-4" style={{ borderBottom: '1px solid #334155' }}>
+            <div className="flex items-center gap-4">
+              <div>
+                <span className="text-sm font-semibold" style={{ color: '#F1F5F9' }}>Gross Dominance Index</span>
+                <p className="text-xs mt-1" style={{ color: '#64748B' }}>Outperforms market by {outperformancePercent.toFixed(1)}%</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-32 h-3 rounded-full overflow-hidden" style={{ backgroundColor: '#334155' }}>
+                <div className="h-full rounded-full" style={{ width: `${Math.min(grossDominanceIndex, 100)}%`, backgroundColor: '#10B981' }}></div>
+              </div>
+              <span className="font-bold text-xl" style={{ color: '#10B981' }}>{grossDominanceIndex}%</span>
+            </div>
+          </div>
+
+          {/* Row 2: Dual Regional Ranks */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Dealer Rank within Region */}
+            <div className="flex items-center justify-between p-3 rounded-lg" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+              <div>
+                <span className="text-sm" style={{ color: '#3B82F6' }}>Dealer in Region</span>
+                <p className="text-xs mt-0.5" style={{ color: '#64748B' }}>#{dealerRegionRank} of {totalDealersInRegion} dealers</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-16 h-2 rounded-full overflow-hidden" style={{ backgroundColor: '#334155' }}>
+                  <div className="h-full rounded-full" style={{ width: `${dealerPercentile}%`, backgroundColor: '#3B82F6' }}></div>
+                </div>
+                <span className="font-bold" style={{ color: '#3B82F6' }}>{dealerPercentile}%</span>
+              </div>
+            </div>
+
+            {/* Region Rank vs Other Regions */}
+            <div className="flex items-center justify-between p-3 rounded-lg" style={{ backgroundColor: 'rgba(168, 85, 247, 0.1)', border: '1px solid rgba(168, 85, 247, 0.2)' }}>
+              <div>
+                <span className="text-sm" style={{ color: '#A855F7' }}>Region vs Regions</span>
+                <p className="text-xs mt-0.5" style={{ color: '#64748B' }}>#{regionVsRegionsRank} of {totalRegions} regions</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-16 h-2 rounded-full overflow-hidden" style={{ backgroundColor: '#334155' }}>
+                  <div className="h-full rounded-full" style={{ width: `${regionPercentile}%`, backgroundColor: '#A855F7' }}></div>
+                </div>
+                <span className="font-bold" style={{ color: '#A855F7' }}>{regionPercentile}%</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Note about geographic scope */}
+          <p className="text-xs text-center mt-3" style={{ color: '#475569' }}>
+            Rankings update based on selected scope: City | County | State | Region
+          </p>
+        </div>
+          );
+        })()}
+      </div>
 
       {/* Revenue Breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -10,7 +10,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Circle, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { supabase } from '../../../lib/supabase';
-import { MapPin, Target, Users, Package, ChevronDown } from 'lucide-react';
+import { MapPin, Target, Users, Package, ChevronDown, AlertTriangle, Zap } from 'lucide-react';
 
 // Fix Leaflet default marker icon issue with bundlers
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
@@ -104,6 +104,7 @@ export function ConquestMap({ selectedDealership }: ConquestMapProps) {
   const [loading, setLoading] = useState(true);
   const [radiusMiles, setRadiusMiles] = useState(50);
   const [showRegions, setShowRegions] = useState(false);
+  const [showVulnerability, setShowVulnerability] = useState(false);
   const [inventoryCounts, setInventoryCounts] = useState<Record<string, number>>({});
 
   // Fetch dealerships and their inventory counts
@@ -202,6 +203,19 @@ export function ConquestMap({ selectedDealership }: ConquestMapProps) {
     });
   }, [dealerships, selectedDealer, radiusMiles]);
 
+  // Calculate vulnerable zones - competitors with high inventory but low/no sales
+  const vulnerableCompetitors = useMemo(() => {
+    return competitorsInRadius.filter((d) => {
+      const invCount = inventoryCounts[d.id] || 0;
+      // High inventory (>50 units) but no sales data = vulnerable
+      return invCount > 50 && !d.has_sales_data;
+    }).map((d) => ({
+      ...d,
+      vulnerability_score: Math.min(100, Math.round((inventoryCounts[d.id] || 0) / 2)), // Score based on inventory
+      conquest_opportunity: inventoryCounts[d.id] > 100 ? 'High' : 'Medium',
+    }));
+  }, [competitorsInRadius, inventoryCounts]);
+
   // Map center and zoom
   const mapCenter: [number, number] = selectedDealer
     ? [selectedDealer.latitude, selectedDealer.longitude]
@@ -278,6 +292,21 @@ export function ConquestMap({ selectedDealership }: ConquestMapProps) {
           >
             <Users size={16} />
             ZIP Regions
+          </button>
+
+          {/* Vulnerability Toggle */}
+          <button
+            onClick={() => setShowVulnerability(!showVulnerability)}
+            className="px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+            style={{
+              backgroundColor: showVulnerability ? COLORS.red : COLORS.card,
+              color: showVulnerability ? '#FFFFFF' : COLORS.textMuted,
+              border: `1px solid ${showVulnerability ? COLORS.red : COLORS.border}`,
+              fontSize: '14px',
+            }}
+          >
+            <AlertTriangle size={16} />
+            Vulnerability
           </button>
         </div>
       </div>
@@ -370,9 +399,121 @@ export function ConquestMap({ selectedDealership }: ConquestMapProps) {
                 </Popup>
               </Marker>
             ))}
+
+            {/* Vulnerability Overlays - Prime Conquest Targets */}
+            {showVulnerability && vulnerableCompetitors.map((dealer) => (
+              <Circle
+                key={`vuln-${dealer.id}`}
+                center={[dealer.latitude, dealer.longitude]}
+                radius={8000} // ~5 mile radius for vulnerability zone
+                pathOptions={{
+                  color: COLORS.red,
+                  fillColor: COLORS.red,
+                  fillOpacity: 0.25,
+                  weight: 2,
+                  dashArray: '5, 5',
+                }}
+              >
+                <Popup>
+                  <div style={{ minWidth: '220px' }}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertTriangle size={16} style={{ color: COLORS.red }} />
+                      <span className="font-bold" style={{ color: COLORS.red }}>Prime Conquest Target</span>
+                    </div>
+                    <h3 className="font-bold mb-1" style={{ color: COLORS.dark }}>
+                      {dealer.name}
+                    </h3>
+                    <p className="text-sm mb-2" style={{ color: COLORS.slate }}>
+                      {dealer.city}, {dealer.state}
+                    </p>
+                    <div className="space-y-1 text-sm">
+                      <div className="flex justify-between">
+                        <span>Inventory:</span>
+                        <span className="font-semibold">{inventoryCounts[dealer.id] || 0} units</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Sales Data:</span>
+                        <span style={{ color: COLORS.red }}>No tracking</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Opportunity:</span>
+                        <span className="font-semibold" style={{ color: COLORS.emerald }}>{dealer.conquest_opportunity}</span>
+                      </div>
+                    </div>
+                    <button
+                      className="w-full mt-3 py-2 rounded text-sm font-semibold flex items-center justify-center gap-2"
+                      style={{ backgroundColor: COLORS.emerald, color: COLORS.dark }}
+                      onClick={() => alert(`Generate localized SEO content for ${dealer.city}, ${dealer.state}\n\nTarget: "${dealer.city} car dealership" keywords\nFocus: GMB optimization + local landing pages`)}
+                    >
+                      <Zap size={14} />
+                      Generate Local Content
+                    </button>
+                  </div>
+                </Popup>
+              </Circle>
+            ))}
           </MapContainer>
         </div>
       </div>
+
+      {/* Prime Conquest Targets Card - Shows when vulnerability is enabled */}
+      {showVulnerability && vulnerableCompetitors.length > 0 && (
+        <div className="mt-6 rounded-xl p-4" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', border: `1px solid ${COLORS.red}` }}>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'rgba(239, 68, 68, 0.2)' }}>
+              <AlertTriangle size={20} style={{ color: COLORS.red }} />
+            </div>
+            <div>
+              <h4 className="font-semibold" style={{ fontSize: '16px', color: COLORS.text }}>
+                Prime Conquest Targets Detected
+              </h4>
+              <p style={{ fontSize: '13px', color: COLORS.textMuted }}>
+                {vulnerableCompetitors.length} competitors with high inventory but no sales tracking
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {vulnerableCompetitors.slice(0, 6).map((dealer) => (
+              <div
+                key={dealer.id}
+                className="p-3 rounded-lg"
+                style={{ backgroundColor: COLORS.card, border: `1px solid ${COLORS.border}` }}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-semibold text-sm truncate" style={{ color: COLORS.text, maxWidth: '150px' }}>
+                    {dealer.name}
+                  </span>
+                  <span
+                    className="px-2 py-0.5 rounded text-xs font-semibold"
+                    style={{
+                      backgroundColor: dealer.conquest_opportunity === 'High' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                      color: dealer.conquest_opportunity === 'High' ? COLORS.red : COLORS.amber
+                    }}
+                  >
+                    {dealer.conquest_opportunity}
+                  </span>
+                </div>
+                <p className="text-xs mb-2" style={{ color: COLORS.textMuted }}>
+                  {dealer.city}, {dealer.state} • {inventoryCounts[dealer.id] || 0} units
+                </p>
+                <button
+                  className="w-full py-1.5 rounded text-xs font-semibold flex items-center justify-center gap-1 transition-colors"
+                  style={{ backgroundColor: 'rgba(16, 185, 129, 0.15)', color: COLORS.emerald, border: `1px solid ${COLORS.emerald}` }}
+                  onClick={() => alert(`Generate localized SEO content for ${dealer.city}, ${dealer.state}\n\nTarget: "${dealer.city} car dealership" keywords\nFocus: GMB optimization + local landing pages`)}
+                >
+                  <Zap size={12} />
+                  Generate Content
+                </button>
+              </div>
+            ))}
+          </div>
+          {vulnerableCompetitors.length > 6 && (
+            <p className="text-center mt-3 text-sm" style={{ color: COLORS.textMuted }}>
+              +{vulnerableCompetitors.length - 6} more targets on map
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Legend & Stats */}
       <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -403,6 +544,16 @@ export function ConquestMap({ selectedDealership }: ConquestMapProps) {
                 }}
               />
               <span style={{ fontSize: '13px', color: COLORS.textMuted }}>{radiusMiles}-Mile Conquest Radius</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div
+                className="w-4 h-4 rounded-full"
+                style={{
+                  border: `2px dashed ${COLORS.red}`,
+                  backgroundColor: 'rgba(239, 68, 68, 0.25)',
+                }}
+              />
+              <span style={{ fontSize: '13px', color: COLORS.textMuted }}>Vulnerability Zone</span>
             </div>
           </div>
         </div>

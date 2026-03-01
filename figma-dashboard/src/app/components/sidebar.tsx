@@ -12,15 +12,31 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { DealershipSelector } from './dealership-selector';
+import { TimeFrameSelector } from './timeframe-selector';
 
 interface SidebarProps {
   activePage: string;
   onNavigate: (page: string) => void;
   selectedDealership: string;
   onDealershipChange: (dealership: string) => void;
+  selectedTimeFrame: string;
+  onTimeFrameChange: (timeFrame: string) => void;
+  customStartDate?: Date | null;
+  customEndDate?: Date | null;
+  onCustomRangeChange?: (startDate: Date | null, endDate: Date | null) => void;
 }
 
-export function Sidebar({ activePage, onNavigate, selectedDealership, onDealershipChange }: SidebarProps) {
+export function Sidebar({
+  activePage,
+  onNavigate,
+  selectedDealership,
+  onDealershipChange,
+  selectedTimeFrame,
+  onTimeFrameChange,
+  customStartDate,
+  customEndDate,
+  onCustomRangeChange
+}: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const navItems = [
@@ -60,6 +76,15 @@ export function Sidebar({ activePage, onNavigate, selectedDealership, onDealersh
                 <DealershipSelector
                   selectedDealership={selectedDealership}
                   onDealershipChange={onDealershipChange}
+                />
+              </div>
+              <div className="mt-3">
+                <TimeFrameSelector
+                  selectedTimeFrame={selectedTimeFrame}
+                  onTimeFrameChange={onTimeFrameChange}
+                  customStartDate={customStartDate}
+                  customEndDate={customEndDate}
+                  onCustomRangeChange={onCustomRangeChange}
                 />
               </div>
             </>

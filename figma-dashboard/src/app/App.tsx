@@ -22,11 +22,19 @@ export default function App() {
   const [activePage, setActivePage] = useState("overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedDealership, setSelectedDealership] = useState("Mid-State Chevrolet & Buick");
+  const [selectedTimeFrame, setSelectedTimeFrame] = useState("last_30_days");
+  const [customStartDate, setCustomStartDate] = useState<Date | null>(null);
+  const [customEndDate, setCustomEndDate] = useState<Date | null>(null);
+
+  const handleCustomRangeChange = (startDate: Date | null, endDate: Date | null) => {
+    setCustomStartDate(startDate);
+    setCustomEndDate(endDate);
+  };
 
   const renderPage = () => {
     switch (activePage) {
       case "overview":
-        return <OverviewDashboard selectedDealership={selectedDealership} />;
+        return <OverviewDashboard selectedDealership={selectedDealership} selectedTimeFrame={selectedTimeFrame} />;
       case "executive":
         return <ExecutiveOverview selectedDealership={selectedDealership} />;
       case "map":
@@ -119,6 +127,11 @@ export default function App() {
           }}
           selectedDealership={selectedDealership}
           onDealershipChange={setSelectedDealership}
+          selectedTimeFrame={selectedTimeFrame}
+          onTimeFrameChange={setSelectedTimeFrame}
+          customStartDate={customStartDate}
+          customEndDate={customEndDate}
+          onCustomRangeChange={handleCustomRangeChange}
         />
       </div>
 

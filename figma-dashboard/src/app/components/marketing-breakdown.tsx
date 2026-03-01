@@ -58,6 +58,7 @@ export function MarketingBreakdown({ totalBudget, onBudgetChange }: MarketingBre
 
   const [expandedSegment, setExpandedSegment] = useState<string | null>(null);
   const [showPieChart, setShowPieChart] = useState(true);
+  const [showSegmentList, setShowSegmentList] = useState(false); // Collapsed by default
 
   // Calculate totals
   const segmentTotals = useMemo(() => {
@@ -149,17 +150,37 @@ export function MarketingBreakdown({ totalBudget, onBudgetChange }: MarketingBre
     }));
   };
 
-  // Custom tooltip for pie chart
+  // Custom tooltip for pie chart - handles Unassigned + shows Vendor/Amount/Note
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
+
+      // Handle Unassigned slice
+      if (data.id === 'unallocated') {
+        return (
+          <div className="rounded-lg p-3 shadow-lg" style={{ backgroundColor: '#1E293B', border: '1px solid #334155' }}>
+            <p className="font-semibold mb-1" style={{ color: '#64748B' }}>Unassigned</p>
+            <p className="text-lg font-bold" style={{ color: '#F59E0B' }}>
+              ${data.value.toLocaleString()}
+            </p>
+            <p className="text-xs" style={{ color: '#94A3B8' }}>
+              {((data.value / totalBudget) * 100).toFixed(1)}% of budget remaining
+            </p>
+            <p className="text-xs mt-2" style={{ color: '#64748B' }}>
+              Allocate to segments below
+            </p>
+          </div>
+        );
+      }
+
+      // Handle assigned segments
       const segment = segmentTotals.find(s => s.id === data.id);
       const topEntries = segment?.entries
         .sort((a, b) => b.amount - a.amount)
-        .slice(0, 3);
+        .slice(0, 5);
 
       return (
-        <div className="rounded-lg p-3 shadow-lg" style={{ backgroundColor: '#1E293B', border: '1px solid #334155' }}>
+        <div className="rounded-lg p-3 shadow-lg" style={{ backgroundColor: '#1E293B', border: '1px solid #334155', maxWidth: '280px' }}>
           <p className="font-semibold mb-1" style={{ color: data.color }}>{data.name}</p>
           <p className="text-lg font-bold" style={{ color: '#F1F5F9' }}>
             ${data.value.toLocaleString()}
@@ -168,14 +189,28 @@ export function MarketingBreakdown({ totalBudget, onBudgetChange }: MarketingBre
             {((data.value / totalBudget) * 100).toFixed(1)}% of budget
           </p>
           {topEntries && topEntries.length > 0 && (
-            <div className="mt-2 pt-2" style={{ borderTop: '1px solid #334155' }}>
-              <p className="text-xs mb-1" style={{ color: '#64748B' }}>Top entries:</p>
+            <div className="mt-2 pt-2 space-y-2" style={{ borderTop: '1px solid #334155' }}>
               {topEntries.map(entry => (
-                <p key={entry.id} className="text-xs" style={{ color: '#94A3B8' }}>
-                  {entry.type || 'Unnamed'}: ${entry.amount.toLocaleString()}
-                </p>
+                <div key={entry.id} className="text-xs">
+                  <p style={{ color: '#F1F5F9', fontWeight: '500' }}>
+                    Vendor: {entry.type || 'Not specified'}
+                  </p>
+                  <p style={{ color: '#10B981' }}>
+                    Amount: ${entry.amount.toLocaleString()}
+                  </p>
+                  {entry.notes && (
+                    <p style={{ color: '#64748B', fontStyle: 'italic' }}>
+                      Note: {entry.notes}
+                    </p>
+                  )}
+                </div>
               ))}
             </div>
+          )}
+          {(!topEntries || topEntries.length === 0) && (
+            <p className="text-xs mt-2" style={{ color: '#64748B' }}>
+              No entries yet - expand segment to add
+            </p>
           )}
         </div>
       );
@@ -271,7 +306,28 @@ export function MarketingBreakdown({ totalBudget, onBudgetChange }: MarketingBre
         </div>
       )}
 
-      {/* Segment List */}
+      {/* Segment List - Collapsed by Default */}
+      <button
+        onClick={() => setShowSegmentList(!showSegmentList)}
+        className="w-full mb-4 px-4 py-3 rounded-lg flex items-center justify-between transition-colors"
+        style={{ backgroundColor: '#0F172A', border: '1px solid #334155' }}
+      >
+        <div className="flex items-center gap-3">
+          {showSegmentList ? (
+            <ChevronDown size={20} style={{ color: '#10B981' }} />
+          ) : (
+            <ChevronRight size={20} style={{ color: '#94A3B8' }} />
+          )}
+          <span className="font-medium" style={{ color: '#F1F5F9' }}>
+            {showSegmentList ? 'Hide' : 'Show'} 14 Marketing Segments
+          </span>
+        </div>
+        <span className="text-sm" style={{ color: '#64748B' }}>
+          {segmentTotals.filter(s => s.total > 0).length} active
+        </span>
+      </button>
+
+      {showSegmentList && (
       <div className="space-y-2">
         {segmentTotals.map((segment) => (
           <div key={segment.id} className="rounded-lg overflow-hidden" style={{ border: '1px solid #334155' }}>
@@ -390,6 +446,7 @@ export function MarketingBreakdown({ totalBudget, onBudgetChange }: MarketingBre
           </div>
         ))}
       </div>
+      )}
 
       {/* Summary Footer */}
       <div className="mt-6 pt-4 flex items-center justify-between" style={{ borderTop: '1px solid #334155' }}>

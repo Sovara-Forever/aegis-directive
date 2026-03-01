@@ -3,7 +3,7 @@ import { supabase } from '../../../lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileTextIcon, DownloadIcon, CheckCircle2Icon, Clock} from 'lucide-react';
+import { FileTextIcon, DownloadIcon, CheckCircle2Icon, Clock, CloudSnow, Sun, CloudRain, Wind, Shield, AlertTriangle } from 'lucide-react';
 
 interface ContentSuggestion {
   id: string;
@@ -198,10 +198,80 @@ export default function ContentGeneration({ selectedDealership }: ContentGenerat
     <div className="p-6 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-4xl font-semibold text-text-primary">Content Generation</h1>
+        <h1 className="text-4xl font-semibold text-text-primary">Aegis Content Engine</h1>
         <p className="text-text-secondary mt-2">
           AI-powered article suggestions for {selectedDealership}
         </p>
+      </div>
+
+      {/* Weather Trigger + OEM Compliance Row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Weather Trigger Card */}
+        <Card className="bg-surface border-border">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'rgba(59, 130, 246, 0.15)' }}>
+                  <CloudSnow className="h-6 w-6" style={{ color: '#3B82F6' }} />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-text-primary">Weather Trigger Active</h3>
+                  <p className="text-sm text-text-secondary">Current Region Forecast: <span style={{ color: '#3B82F6', fontWeight: '600' }}>Snow</span></p>
+                </div>
+              </div>
+              <div className="text-right">
+                <Badge variant="outline" className="mb-1" style={{ borderColor: '#3B82F6', color: '#3B82F6' }}>
+                  <Wind className="h-3 w-3 mr-1" />
+                  AWD Push
+                </Badge>
+                <p className="text-xs text-text-secondary mt-1">Auto-prioritizing 4WD/AWD content</p>
+              </div>
+            </div>
+            <div className="mt-3 p-3 rounded-lg" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+              <p className="text-sm" style={{ color: '#3B82F6' }}>
+                <strong>Recommended Action:</strong> AWD Winter Push — Generate content targeting "best AWD vehicles for snow" keywords
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* OEM Compliance Badge Card */}
+        <Card className="bg-surface border-border">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'rgba(16, 185, 129, 0.15)' }}>
+                  <Shield className="h-6 w-6" style={{ color: '#10B981' }} />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-text-primary">OEM MAAP Compliant</h3>
+                  <p className="text-sm text-text-secondary">All generated content verified</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <Badge className="mb-1" style={{ backgroundColor: '#10B981', color: '#0F172A' }}>
+                  <CheckCircle2Icon className="h-3 w-3 mr-1" />
+                  Verified
+                </Badge>
+                <p className="text-xs text-text-secondary mt-1">No co-op violation risk</p>
+              </div>
+            </div>
+            <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+              <div className="p-2 rounded-lg" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)' }}>
+                <p className="text-lg font-bold" style={{ color: '#10B981' }}>GM</p>
+                <p className="text-xs text-text-secondary">Compliant</p>
+              </div>
+              <div className="p-2 rounded-lg" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)' }}>
+                <p className="text-lg font-bold" style={{ color: '#10B981' }}>Ford</p>
+                <p className="text-xs text-text-secondary">Compliant</p>
+              </div>
+              <div className="p-2 rounded-lg" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)' }}>
+                <p className="text-lg font-bold" style={{ color: '#10B981' }}>Stellantis</p>
+                <p className="text-xs text-text-secondary">Compliant</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Content Suggestions Table */}

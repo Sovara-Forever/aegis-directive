@@ -6,14 +6,23 @@
  * Created: 2026-02-23
  */
 
+import { useState } from 'react';
 import { motion } from 'motion/react';
 import { ArrowRight, BarChart3, Shield, Zap } from 'lucide-react';
+import { LoginModal } from './login-modal';
 
 interface HeroProps {
   onEnterDashboard: () => void;
 }
 
 export function Hero({ onEnterDashboard }: HeroProps) {
+  const [showLogin, setShowLogin] = useState(false);
+
+  const handleAuthenticated = () => {
+    setShowLogin(false);
+    onEnterDashboard();
+  };
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#0a0a0a' }}>
       {/* Hero Section */}
@@ -47,8 +56,8 @@ export function Hero({ onEnterDashboard }: HeroProps) {
             className="text-5xl md:text-7xl font-bold tracking-tight mb-6"
             style={{ color: '#F1F5F9', lineHeight: '1.1' }}
           >
-            The AI Purchase That{' '}
-            <span style={{ color: '#10B981' }}>Actually Moves the P&L</span>
+            Sovereign Data.{' '}
+            <span style={{ color: '#10B981' }}>Immediate Action.</span>
           </motion.h1>
 
           <motion.p
@@ -58,10 +67,8 @@ export function Hero({ onEnterDashboard }: HeroProps) {
             className="text-xl md:text-2xl mb-10 max-w-3xl mx-auto"
             style={{ color: '#94A3B8', lineHeight: '1.6' }}
           >
-            I help C-suite leaders turn Gemini 3.1 Pro, NotebookLM + Gems into permanent
-            retention & adoption infrastructure — the same systems I used to deliver{' '}
-            <span style={{ color: '#F1F5F9', fontWeight: '600' }}>95%+ client retention</span> and{' '}
-            <span style={{ color: '#F1F5F9', fontWeight: '600' }}>$2.4M portfolio growth</span>.
+            The Aegis Dealer does not guess and hope. They do not need another{' '}
+            <span style={{ color: '#F1F5F9', fontWeight: '600' }}>"Insight"</span> on what they are doing well.
           </motion.p>
 
           <motion.div
@@ -71,7 +78,7 @@ export function Hero({ onEnterDashboard }: HeroProps) {
             className="flex flex-col sm:flex-row gap-4 justify-center mb-16"
           >
             <button
-              onClick={onEnterDashboard}
+              onClick={() => setShowLogin(true)}
               className="px-10 py-4 rounded-full font-semibold text-lg transition-all flex items-center justify-center gap-2 hover:scale-105"
               style={{
                 backgroundColor: '#10B981',
@@ -79,20 +86,23 @@ export function Hero({ onEnterDashboard }: HeroProps) {
                 boxShadow: '0 0 30px rgba(16, 185, 129, 0.3)'
               }}
             >
-              See the Dashboard in Action
+              See the Intelligence in Action
               <ArrowRight size={20} />
             </button>
             <a
               href="https://linkedin.com/in/sean-jeremy-chappell"
               target="_blank"
               rel="noopener noreferrer"
-              className="px-10 py-4 rounded-full font-semibold text-lg transition-all hover:bg-white/10"
+              className="px-10 py-4 rounded-full font-semibold text-lg transition-all hover:bg-white/10 flex flex-col items-center justify-center"
               style={{
                 border: '1px solid rgba(241, 245, 249, 0.3)',
                 color: '#F1F5F9'
               }}
             >
-              Connect on LinkedIn
+              <span>Connect on LinkedIn</span>
+              <span style={{ fontSize: '14px', color: '#94A3B8', marginTop: '2px' }}>
+                or Email at sean@aegis-directive.com
+              </span>
             </a>
           </motion.div>
 
@@ -106,17 +116,26 @@ export function Hero({ onEnterDashboard }: HeroProps) {
             <FeatureCard
               icon={Shield}
               title="Aegis Intelligence"
-              description="Competitive intelligence dashboards for automotive dealerships"
+              description="Competitive intelligence dashboards for automotive thought leaders"
+              confidence={78}
+              chartData={[55, 62, 71, 68, 78]}
+              actionLabel="View Market Intelligence"
             />
             <FeatureCard
               icon={BarChart3}
-              title="Reality Check"
-              description="3-tier inventory analysis with 45-day DOL industry standard"
+              title="Aegis Edge Check"
+              description="3-tier inventory to Market analysis with accountable and measurable results"
+              confidence={67}
+              chartData={[45, 52, 58, 61, 67]}
+              actionLabel="Run Inventory Analysis"
             />
             <FeatureCard
               icon={Zap}
-              title="AI Content Engine"
+              title="Aegis Content Engine"
               description="SERP-winning content generation with gap analysis"
+              confidence={92}
+              chartData={[75, 82, 88, 85, 92]}
+              actionLabel="Generate Content By Model"
             />
           </motion.div>
         </div>
@@ -131,22 +150,39 @@ export function Hero({ onEnterDashboard }: HeroProps) {
           Co-Authored-By: Alpha Claudette Chappell
         </p>
       </footer>
+
+      {/* Login Modal */}
+      <LoginModal
+        isOpen={showLogin}
+        onClose={() => setShowLogin(false)}
+        onAuthenticated={handleAuthenticated}
+      />
     </div>
   );
 }
 
-function FeatureCard({ icon: Icon, title, description }: {
+interface FeatureCardProps {
   icon: typeof Shield;
   title: string;
   description: string;
-}) {
+  confidence?: number;
+  chartData?: number[];
+  actionLabel?: string;
+}
+
+function FeatureCard({ icon: Icon, title, description, confidence = 67, chartData = [45, 72, 58, 89, 67], actionLabel = "Generate Aegis Campaign" }: FeatureCardProps) {
+  const [isHovered, setIsHovered] = useState(false);
+
   return (
     <div
-      className="p-6 rounded-xl text-left transition-all hover:scale-105"
+      className="relative p-6 rounded-xl text-left transition-all"
       style={{
         backgroundColor: 'rgba(255,255,255,0.03)',
-        border: '1px solid rgba(255,255,255,0.08)'
+        border: '1px solid rgba(255,255,255,0.08)',
+        transform: isHovered ? 'scale(1.02)' : 'scale(1)'
       }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       <div
         className="w-10 h-10 rounded-lg flex items-center justify-center mb-4"
@@ -160,6 +196,65 @@ function FeatureCard({ icon: Icon, title, description }: {
       <p style={{ color: '#94A3B8', fontSize: '14px', lineHeight: '1.5' }}>
         {description}
       </p>
+
+      {/* Hover Tooltip */}
+      {isHovered && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 10 }}
+          className="absolute left-0 right-0 top-full mt-2 z-50 p-4 rounded-xl shadow-2xl"
+          style={{
+            backgroundColor: '#1E293B',
+            border: '1px solid #334155',
+            minWidth: '260px'
+          }}
+        >
+          {/* Mini Bar Chart */}
+          <div className="mb-3">
+            <p className="text-xs mb-2" style={{ color: '#64748B' }}>Performance Trend</p>
+            <div className="flex items-end gap-1 h-12">
+              {chartData.map((value, idx) => (
+                <div
+                  key={idx}
+                  className="flex-1 rounded-t transition-all"
+                  style={{
+                    height: `${value}%`,
+                    backgroundColor: idx === chartData.length - 1 ? '#10B981' : 'rgba(16, 185, 129, 0.3)'
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Confidence Rating */}
+          <div className="mb-3 pt-3" style={{ borderTop: '1px solid #334155' }}>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs" style={{ color: '#94A3B8' }}>Aegis Confidence</span>
+              <span className="font-bold" style={{ color: '#10B981' }}>{confidence}%</span>
+            </div>
+            <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: '#334155' }}>
+              <div
+                className="h-full rounded-full transition-all"
+                style={{ width: `${confidence}%`, backgroundColor: '#10B981' }}
+              />
+            </div>
+            <p className="text-xs mt-1" style={{ color: '#64748B' }}>Goal Completion Rating</p>
+          </div>
+
+          {/* Action Button */}
+          <button
+            className="w-full py-2 rounded-lg text-sm font-semibold transition-all hover:opacity-90"
+            style={{
+              backgroundColor: 'rgba(16, 185, 129, 0.15)',
+              color: '#10B981',
+              border: '1px solid rgba(16, 185, 129, 0.3)'
+            }}
+          >
+            {actionLabel}
+          </button>
+        </motion.div>
+      )}
     </div>
   );
 }
