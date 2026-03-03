@@ -10,12 +10,18 @@ coverage/
 build/
 dist/
 
-# Environment
+# Environment (NEVER COMMIT)
 .env
+.env.*
 .env.local
+.env.alpha
 .env.development.local
 .env.test.local
 .env.production.local
+*.env
+
+# Sensitive files
+.mcp.json
 
 # Logs
 npm-debug.log*
