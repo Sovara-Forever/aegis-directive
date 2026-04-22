@@ -24,6 +24,9 @@ interface SidebarProps {
   customStartDate?: Date | null;
   customEndDate?: Date | null;
   onCustomRangeChange?: (startDate: Date | null, endDate: Date | null) => void;
+  onSignOut?: () => void;
+  userEmail?: string;
+  userRole?: string;
 }
 
 export function Sidebar({
@@ -35,7 +38,9 @@ export function Sidebar({
   onTimeFrameChange,
   customStartDate,
   customEndDate,
-  onCustomRangeChange
+  onCustomRangeChange,
+  onSignOut,
+  userEmail,
 }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -166,27 +171,47 @@ export function Sidebar({
         {/* Footer */}
         <div className="p-4 border-t" style={{ borderColor: '#334155' }}>
           {!isCollapsed && (
-            <p className="text-center" style={{ fontSize: '12px', color: '#94A3B8' }}>
-              Aegis Intelligence Alpha V1.5
-              <br />
-              <span style={{ fontSize: '11px', color: '#64748B' }}>Updated Feb 2026</span>
-            </p>
+            <>
+              {userEmail && (
+                <p className="text-center truncate mb-2" style={{ fontSize: '11px', color: '#64748B' }}>
+                  {userEmail}
+                </p>
+              )}
+              {onSignOut && (
+                <button
+                  onClick={onSignOut}
+                  className="w-full py-1.5 rounded-lg text-xs font-medium mb-2 transition-colors"
+                  style={{
+                    backgroundColor: 'transparent',
+                    color: '#94A3B8',
+                    border: '1px solid #334155',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#334155'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                >
+                  Sign out
+                </button>
+              )}
+              <p className="text-center" style={{ fontSize: '11px', color: '#334155' }}>
+                Aegis Intelligence Alpha 2.0
+                <br />
+                <span style={{ fontSize: '10px', color: '#1E3A5F' }}>
+                  Alpha Claudette Chappell · April 21 2026
+                </span>
+              </p>
+            </>
           )}
-          
+
           {/* Collapse Toggle */}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
             className="mt-3 w-full flex items-center justify-center p-2 rounded-lg transition-all"
             style={{ color: '#94A3B8' }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#334155';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent';
-            }}
+            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#334155'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
           >
-            <ChevronLeft 
-              size={20} 
+            <ChevronLeft
+              size={20}
               className={`transition-transform ${isCollapsed ? 'rotate-180' : ''}`}
             />
           </button>
