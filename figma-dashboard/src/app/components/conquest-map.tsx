@@ -150,26 +150,24 @@ export function ConquestMap({ selectedDealership }: ConquestMapProps) {
 
         if (dealerError) throw dealerError;
 
-        // Fetch inventory counts per dealership (+ model for scorecard rollup)
-        const { data: invData, error: invError } = await supabase
-          .from('inventory')
-          .select('dealership_id, model')
-          .eq('is_active', true);
+        // Fetch per-dealership inventory counts via aggregate RPC (bypasses row-limit on 13k+ rows)
+        const { data: invCountData } = await supabase
+          .rpc('get_inventory_counts_by_dealer');
 
-        // Build counts locally so enrichedDealers has correct values immediately
+        // Build counts map from aggregate results
         const localCounts: Record<string, number> = {};
-        if (!invError && invData) {
-          invData.forEach((inv: { dealership_id: string; model: string }) => {
-            localCounts[inv.dealership_id] = (localCounts[inv.dealership_id] || 0) + 1;
+        if (invCountData) {
+          invCountData.forEach((row: { dealership_id: string; count: number }) => {
+            localCounts[row.dealership_id] = Number(row.count);
           });
           setInventoryCounts(localCounts);
         }
 
-        // Check which dealers have sales data (market_sales)
+        // Check which dealers have sales data (market_sales) — distinct dealership_ids only
         const { data: salesData } = await supabase
           .from('market_sales')
           .select('dealership_id')
-          .limit(1000);
+          .limit(10000);
 
         const dealersWithSales = new Set(salesData?.map((s: { dealership_id: string }) => s.dealership_id) || []);
 
@@ -247,16 +245,21 @@ export function ConquestMap({ selectedDealership }: ConquestMapProps) {
             setAvailableModels(models);
           }
 
-          // Build per-model inventory counts for this dealer (scorecard rollup)
-          if (!invError && invData) {
+          // Fetch per-model inventory counts for this dealer (targeted query — no row limit risk)
+          const { data: modelInvData } = await supabase
+            .from('inventory')
+            .select('model')
+            .eq('dealership_id', selectedDealer.id)
+            .eq('is_active', true)
+            .limit(10000);
+
+          if (modelInvData) {
             const localModelCounts: Record<string, number> = {};
-            invData
-              .filter((inv: { dealership_id: string; model: string }) => inv.dealership_id === selectedDealer.id)
-              .forEach((inv: { dealership_id: string; model: string }) => {
-                if (inv.model) {
-                  localModelCounts[inv.model] = (localModelCounts[inv.model] || 0) + 1;
-                }
-              });
+            modelInvData.forEach((inv: { model: string }) => {
+              if (inv.model) {
+                localModelCounts[inv.model] = (localModelCounts[inv.model] || 0) + 1;
+              }
+            });
             setModelInventoryCounts(localModelCounts);
           }
         }
