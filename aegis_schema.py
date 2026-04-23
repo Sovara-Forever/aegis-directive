@@ -135,21 +135,106 @@ SCHEMAS: Dict[str, Dict[str, Any]] = {
     },
 
     # --- 3. GEO SALES ---
+    # Supports both legacy flat format AND the full Current/YOY/LP radius market report format.
+    # model_name and radius_miles are injected from the filename by batch_local.py.
     'geo_sales': {
         'name': 'geo_sales',
         'primary_key': ['zip', 'radius_band'],
         'columns': [
             {'name': 'zip', 'type': 'string', 'required': True},
-            {'name': 'radius_band', 'type': 'string', 'required': True},
-            {'name': 'distance_mi', 'type': 'float', 'required': True},
-            {'name': 'your_zip_sales', 'type': 'int', 'required': True},
-            {'name': 'total_zip_sales', 'type': 'int', 'required': True},
+            {'name': 'radius_band', 'type': 'string', 'required': False},
+            {'name': 'distance_mi', 'type': 'float', 'required': False},
+            {'name': 'market_significance', 'type': 'string', 'required': False},
+            {'name': 'priority', 'type': 'float', 'required': False},
+            {'name': 'dealer_zip_sales_current', 'type': 'int', 'required': False},
+            {'name': 'total_zip_sales_yoy', 'type': 'int', 'required': False},
+            {'name': 'total_zip_sales_lp', 'type': 'int', 'required': False},
+            {'name': 'all_zip_sales_current', 'type': 'int', 'required': False},
+            {'name': 'all_zip_sales_yoy', 'type': 'int', 'required': False},
+            {'name': 'all_zip_sales_lp', 'type': 'int', 'required': False},
+            {'name': 'zip_share_current', 'type': 'float', 'required': False},
+            {'name': 'zip_share_yoy', 'type': 'float', 'required': False},
+            {'name': 'zip_share_lp', 'type': 'float', 'required': False},
+            {'name': 'model_name', 'type': 'string', 'required': False},
+            {'name': 'radius_miles', 'type': 'int', 'required': False},
+            # Legacy flat-format aliases (kept for backwards compat)
+            {'name': 'your_zip_sales', 'type': 'int', 'required': False},
+            {'name': 'total_zip_sales', 'type': 'int', 'required': False},
             {'name': 'zip_share', 'type': 'float', 'required': False},
         ],
         'column_map': {
-            'ZIP': 'zip', 'Name': 'radius_band', 'Distance (mi)': 'distance_mi',
-            'Your ZIP Sales': 'your_zip_sales', 'Total ZIP Sales': 'total_zip_sales',
+            # Full radius market report columns
+            'ZIP': 'zip',
+            'Distance from Dealer (Miles)': 'distance_mi',
+            'Market Significance': 'market_significance',
+            'Priority': 'priority',
+            'Dealer ZIP Sales - Current': 'dealer_zip_sales_current',
+            'Total ZIP Sales - YOY': 'total_zip_sales_yoy',
+            'Total ZIP Sales - LP': 'total_zip_sales_lp',
+            'All ZIP Sales - Current': 'all_zip_sales_current',
+            'All ZIP Sales - YOY': 'all_zip_sales_yoy',
+            'All ZIP Sales - LP': 'all_zip_sales_lp',
+            'ZIP Share - Current': 'zip_share_current',
+            'ZIP Share - YOY': 'zip_share_yoy',
+            'ZIP Share - LP': 'zip_share_lp',
+            # Injected by batch_local.py from filename
+            'model_name': 'model_name',
+            'radius_miles': 'radius_miles',
+            # Legacy flat-format column mappings
+            'Name': 'radius_band',
+            'Distance (mi)': 'distance_mi',
+            'Your ZIP Sales': 'your_zip_sales',
+            'Total ZIP Sales': 'total_zip_sales',
             'ZIP Share': 'zip_share',
+        }
+    },
+
+    # --- 3b. MARKET ANALYSIS (Strategy Tier Reports — "Go To War" / "Hold Your Ground") ---
+    # Supabase table uses: zip_code, model, distance_miles (matches existing DDL)
+    'market_analysis': {
+        'name': 'market_analysis',
+        'primary_key': ['zip_code', 'model', 'period_label'],
+        'columns': [
+            {'name': 'zip_code', 'type': 'string', 'required': True},
+            {'name': 'model', 'type': 'string', 'required': True},
+            {'name': 'market_significance', 'type': 'string', 'required': False},
+            {'name': 'priority', 'type': 'float', 'required': False},
+            {'name': 'distance_miles', 'type': 'float', 'required': False},
+            {'name': 'dealer_sales_current', 'type': 'int', 'required': False},
+            {'name': 'dealer_sales_yoy', 'type': 'int', 'required': False},
+            {'name': 'dealer_sales_lp', 'type': 'int', 'required': False},
+            {'name': 'all_sales_current', 'type': 'int', 'required': False},
+            {'name': 'all_sales_yoy', 'type': 'int', 'required': False},
+            {'name': 'all_sales_lp', 'type': 'int', 'required': False},
+            {'name': 'zip_share_current', 'type': 'float', 'required': False},
+            {'name': 'zip_share_yoy', 'type': 'float', 'required': False},
+            {'name': 'zip_share_lp', 'type': 'float', 'required': False},
+            {'name': 'radius_miles', 'type': 'int', 'required': False},
+            {'name': 'period_start', 'type': 'string', 'required': False},
+            {'name': 'period_end', 'type': 'string', 'required': False},
+            {'name': 'period_label', 'type': 'string', 'required': False},
+            {'name': 'import_batch_id', 'type': 'string', 'required': False},
+        ],
+        'column_map': {
+            'ZIP': 'zip_code',
+            'Market Significance': 'market_significance',
+            'Priority': 'priority',
+            'Distance from Dealer (Miles)': 'distance_miles',
+            'Dealer ZIP Sales - Current': 'dealer_sales_current',
+            'Dealer ZIP Sales - YOY': 'dealer_sales_yoy',
+            'Dealer ZIP Sales - LP': 'dealer_sales_lp',
+            'All ZIP Sales - Current': 'all_sales_current',
+            'All ZIP Sales - YOY': 'all_sales_yoy',
+            'All ZIP Sales - LP': 'all_sales_lp',
+            'ZIP Share - Current': 'zip_share_current',
+            'ZIP Share - YOY': 'zip_share_yoy',
+            'ZIP Share - LP': 'zip_share_lp',
+            'model_name': 'model',       # injected by batch_local.py — (1) stripped before this
+            'radius_miles': 'radius_miles',
+            'period_start': 'period_start',
+            'period_end': 'period_end',
+            'period_label': 'period_label',
+            'import_batch_id': 'import_batch_id',
         }
     },
 
@@ -252,11 +337,13 @@ SCHEMAS: Dict[str, Dict[str, Any]] = {
             {'name': 'search_volume', 'type': 'int', 'required': False},
             {'name': 'end_clicks', 'type': 'int', 'required': False},
             {'name': 'clicks_change', 'type': 'int', 'required': False},
+            {'name': 'keyword_tier', 'type': 'string', 'required': False},
         ],
         'column_map': {
             'Keyword': 'keyword', 'StartRank': 'start_rank', 'EndRank': 'end_rank',
             'RankChange': 'rank_change', 'SearchVolume': 'search_volume',
-            'EndClicks': 'end_clicks', 'ClicksChange': 'clicks_change'
+            'EndClicks': 'end_clicks', 'ClicksChange': 'clicks_change',
+            'keyword_tier': 'keyword_tier'
         }
     },
 
@@ -279,6 +366,7 @@ SCHEMAS: Dict[str, Dict[str, Any]] = {
             {'name': 'percent_organic', 'type': 'float', 'required': False},
             {'name': 'url', 'type': 'string', 'required': False},
             {'name': 'cpc', 'type': 'float', 'required': False},
+            {'name': 'keyword_tier', 'type': 'string', 'required': False},
         ],
         'column_map': {
             'Keyword': 'keyword', 'Rank': 'top_rank', 'Your Rank': 'rank', 'Your Rank Change': 'rank_change',
@@ -287,7 +375,8 @@ SCHEMAS: Dict[str, Dict[str, Any]] = {
             'Total Monthly Clicks': 'total_monthly_clicks',
             'Mobile Search Percent': 'percent_mobile', 'Desktop Search Percent': 'percent_desktop',
             'Paid Clicks Percent': 'percent_paid', 'Organic Clicks Percent': 'percent_organic',
-            'Your URL': 'url', 'Broad Cost Per Click': 'cpc'
+            'Your URL': 'url', 'Broad Cost Per Click': 'cpc',
+            'keyword_tier': 'keyword_tier'
         }
     },
 
@@ -335,13 +424,15 @@ SCHEMAS: Dict[str, Dict[str, Any]] = {
             {'name': 'search_volume', 'type': 'int', 'required': False},
             {'name': 'clicks', 'type': 'int', 'required': False},
             {'name': 'keyword_count', 'type': 'int', 'required': False},
+            {'name': 'keyword_tier', 'type': 'string', 'required': False},
         ],
         'column_map': {
             'title': 'title', 'url': 'url', 'keyword': 'keyword', 'rank': 'rank',
             'search_volume': 'search_volume', 'clicks': 'clicks', 'keyword_count': 'keyword_count',
             'Title': 'title', 'Url': 'url', 'Top KW': 'keyword', 'Top KW Position': 'rank',
             'Top KW Search Volume': 'search_volume', 'Top KW Clicks': 'clicks', 'Est Monthly SEO Clicks': 'clicks',
-            'Keyword Count': 'keyword_count'
+            'Keyword Count': 'keyword_count',
+            'keyword_tier': 'keyword_tier'
         }
     },
 
@@ -455,6 +546,52 @@ SCHEMAS: Dict[str, Dict[str, Any]] = {
             'notes': 'notes', 'Notes': 'notes', 'Note': 'notes',
         }
     },
+
+    # --- 17. SHADOWFORGE CANONICAL OUTPUT ---
+    'shadowforge_canonical': {
+        'name': 'inventory_vehicle',  # Maps back to Supabase inventory table
+        'primary_key': ['vin'],
+        'columns': [
+            {'name': 'year', 'type': 'int', 'required': True},
+            {'name': 'make', 'type': 'string', 'required': False},
+            {'name': 'model', 'type': 'string', 'required': True},
+            {'name': 'trim', 'type': 'string', 'required': False},
+            {'name': 'vin', 'type': 'string', 'required': True},
+            {'name': 'stock_number', 'type': 'string', 'required': False},
+            {'name': 'status', 'type': 'string', 'required': False},
+            {'name': 'msrp', 'type': 'float', 'required': False},
+            {'name': 'price', 'type': 'float', 'required': False},
+            {'name': 'savings', 'type': 'float', 'required': False},
+            {'name': 'monthly_payment', 'type': 'float', 'required': False},
+            {'name': 'image_url', 'type': 'string', 'required': False},
+            {'name': 'url', 'type': 'string', 'required': False},
+            {'name': 'dealer', 'type': 'string', 'required': False},
+            {'name': 'exterior_color', 'type': 'string', 'required': False},
+            {'name': 'interior_color', 'type': 'string', 'required': False},
+            {'name': 'engine', 'type': 'string', 'required': False},
+            {'name': 'transmission', 'type': 'string', 'required': False},
+            {'name': 'drivetrain', 'type': 'string', 'required': False},
+            {'name': 'mileage', 'type': 'int', 'required': False},
+            {'name': 'body_style', 'type': 'string', 'required': False},
+            {'name': 'features', 'type': 'string', 'required': False},
+            {'name': 'market_comp', 'type': 'string', 'required': False},
+            {'name': 'lead_score', 'type': 'int', 'required': False},
+            {'name': 'urgency_flag', 'type': 'string', 'required': False},
+            {'name': 'seo_notes', 'type': 'string', 'required': False},
+        ],
+        'column_map': {
+            'Year': 'year', 'Make': 'make', 'Model': 'model', 'Trim': 'trim',
+            'VIN': 'vin', 'Stock': 'stock_number', 'Status': 'status',
+            'MSRP': 'msrp', 'Sale_Price': 'price', 'Discount': 'savings',
+            'Monthly_Payment': 'monthly_payment', 'Image_URL': 'image_url',
+            'Detail_URL': 'url', 'Dealer': 'dealer', 'Exterior_Color': 'exterior_color',
+            'Interior_Color': 'interior_color', 'Engine': 'engine',
+            'Transmission': 'transmission', 'Drivetrain': 'drivetrain',
+            'Mileage': 'mileage', 'Body_Style': 'body_style', 'Features': 'features',
+            'Market_Comp': 'market_comp', 'Lead_Score': 'lead_score',
+            'Urgency_Flag': 'urgency_flag', 'SEO_Notes': 'seo_notes'
+        }
+    },
 }
 
 # =============================================================================
@@ -470,17 +607,26 @@ def detect_schema(df: pd.DataFrame, filename: str = '') -> str:
     if 'seo_keywords' in fname: return 'spyfu_seo_keywords'
     if 'backlink' in fname: return 'spyfu_backlinks'
     if 'competitor' in fname: return 'spyfu_competitors'
-    if 'ppc' in fname and 'kombat' in fname: return 'spyfu_ppc_kombat'
+    # PPC detection: "PPC_Keywords_*_PPC.csv" OR "PPC_Kombat_*.csv"
+    if 'ppc_keywords' in fname or ('ppc' in fname and 'kombat' in fname): return 'spyfu_ppc_kombat'
     if 'kombat' in fname: return 'spyfu_seo_kombat'
     if 'toppages' in fname or 'top_pages' in fname: return 'seo_top_pages'
     if 'serp' in fname or 'serp_history' in fname: return 'serp_history'
 
     # Content-based detection
+    # ShadowForge canonical output (detect BEFORE generic inventory_vehicle)
+    if 'source_format' in cols and 'lead_score' in cols: return 'shadowforge_canonical'
+
     if any(x in cols for x in ['vin', 'vin-row', 'vehicle identification number']): return 'inventory_vehicle'
     if 'dealership name' in cols and 'units sold' in cols: return 'market_insights'
     if 'campaign_id' in cols: return 'ads_daily'
     if 'search term' in cols and ('added/excluded' in cols or 'match type' in cols): return 'google_search_terms'
     if 'device' in cols and 'network' in cols: return 'campaign_summary'
+    if 'market significance' in cols and 'zip' in cols and 'priority' in cols:
+        # Strategy-tier model reports have 'Dealer ZIP Sales - Current'; legacy geo has 'Your ZIP Sales'
+        if 'dealer zip sales - current' in cols:
+            return 'market_analysis'
+        return 'geo_sales'
     if 'radius_band' in cols or ('zip' in cols and 'distance (mi)' in cols): return 'geo_sales'
     if 'term' in cols and 'monthlysearches' in cols: return 'spyfu_overview'
 

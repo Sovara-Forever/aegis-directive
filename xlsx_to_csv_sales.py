@@ -52,11 +52,31 @@ for file_path in xlsx_files:
                 continue
 
             radius_miles = int(match.group(1))
-            model_name = re.sub(r'\s*\(\d+\)\s*$', '', match.group(2)).strip()
+            raw_model = match.group(2).strip()
+            model_name = re.sub(r'\s*\(\d+\)\s*$', '', raw_model).strip()
 
-            # Inject metadata columns — batch_local uses these for geo_sales stamping
+            # Detect period from filename: (1) suffix = latest MTD upload (Apr), clean name = prior period (Q1)
+            # Pattern: browser appends (1) when downloading a duplicate — first download = Q1, second = Apr MTD
+            is_apr = bool(re.search(r'\(\d+\)\s*$', raw_model))
+            if is_apr:
+                period_start = '2026-04-01'
+                period_end   = '2026-04-30'
+                period_label = 'APR-2026'
+            else:
+                period_start = '2026-01-01'
+                period_end   = '2026-03-31'
+                period_label = 'Q1-2026'
+
+            from datetime import date
+            import_batch_id = f"batch-{date.today().isoformat()}-{period_label.lower()}"
+
+            # Inject metadata columns — batch_local uses these for market_analysis stamping
             df['radius_miles'] = radius_miles
             df['model_name'] = model_name
+            df['period_start'] = period_start
+            df['period_end'] = period_end
+            df['period_label'] = period_label
+            df['import_batch_id'] = import_batch_id
 
             csv_path = input_dir / f"{file_path.stem}.csv"
             if csv_path.exists():

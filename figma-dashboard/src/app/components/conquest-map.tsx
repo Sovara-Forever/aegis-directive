@@ -240,16 +240,19 @@ export function ConquestMap({ selectedDealership }: ConquestMapProps) {
             console.warn('[ConquestMap] RPC returned null/undefined');
           }
 
-          // Fetch market analysis — current + lp columns for period toggle
+          // Fetch market analysis — ALL period_label rows, period toggle filters client-side
+          // APR-2026 and Q1-2026 each store their own sales in dealer_sales_current
+          // all_sales_lp/yoy ARE populated — market-wide PoP/YoY from Autoflyte Edge
           const { data: maData } = await supabase
             .from('market_analysis')
-            .select('zip_code, model, market_significance, priority, zip_share_current, zip_share_lp, dealer_sales_current, dealer_sales_lp, all_sales_current, all_sales_lp')
+            .select('zip_code, model, market_significance, priority, period_label, zip_share_current, zip_share_lp, zip_share_yoy, dealer_sales_current, all_sales_current, all_sales_lp, all_sales_yoy')
             .eq('dealership_id', selectedDealer.id)
-            .order('tracked_date', { ascending: false })
+            .order('period_end', { ascending: false })
             .limit(10000);
 
           if (maData) {
             setMarketAnalysis(maData);
+            // Union across all periods so model selector stays stable on toggle
             const models = [...new Set(maData.map((d: any) => d.model).filter(Boolean))].sort() as string[];
             setAvailableModels(models);
           }
@@ -361,31 +364,25 @@ export function ConquestMap({ selectedDealership }: ConquestMapProps) {
     return marketAnalysis.filter((d) => d.model === selectedModel);
   }, [marketAnalysis, selectedModel]);
 
-  // Market totals from market_analysis for Territory Stats — period-aware
-  const marketTotals = useMemo(() => {
-    const salesCol = selectedPeriod === 'current' ? 'dealer_sales_current' : 'dealer_sales_lp';
-    const allCol = selectedPeriod === 'current' ? 'all_sales_current' : 'all_sales_lp';
-    const dealerSales = filteredAnalysis.reduce(
-      (sum: number, row: any) => sum + (row[salesCol] || 0), 0
-    );
-    const allSales = filteredAnalysis.reduce(
-      (sum: number, row: any) => sum + (row[allCol] || 0), 0
-    );
-    const goToWarCount = filteredAnalysis.filter(
-      (row: any) => row.market_significance === 'Go To War'
-    ).length;
-    const holdGroundCount = filteredAnalysis.filter(
-      (row: any) => row.market_significance === 'Hold Your Ground'
-    ).length;
-    return { dealerSales, allSales, goToWarCount, holdGroundCount };
-  }, [filteredAnalysis, selectedPeriod]);
+  // Map selectedPeriod → period_label value in Supabase rows
+  const activePeriodLabel = selectedPeriod === 'current' ? 'APR-2026' : 'Q1-2026';
 
-  // Per-model aggregated scorecard data — period-aware (_current vs _lp column set)
+  // Market totals from market_analysis for Territory Stats — filter by period_label row
+  const marketTotals = useMemo(() => {
+    const periodRows = filteredAnalysis.filter((row: any) => row.period_label === activePeriodLabel);
+    const dealerSales = periodRows.reduce((sum: number, row: any) => sum + (row.dealer_sales_current || 0), 0);
+    const allSales = periodRows.reduce((sum: number, row: any) => sum + (row.all_sales_current || 0), 0);
+    const goToWarCount = periodRows.filter((row: any) => row.market_significance === 'Go To War').length;
+    const holdGroundCount = periodRows.filter((row: any) => row.market_significance === 'Hold Your Ground').length;
+    return { dealerSales, allSales, goToWarCount, holdGroundCount };
+  }, [filteredAnalysis, activePeriodLabel]);
+
+  // Per-model aggregated scorecard data — filter rows by period_label, read dealer_sales_current
   const modelScorecards = useMemo(() => {
     if (!marketAnalysis?.length) return [];
-    const salesCol = selectedPeriod === 'current' ? 'dealer_sales_current' : 'dealer_sales_lp';
-    const allCol = selectedPeriod === 'current' ? 'all_sales_current' : 'all_sales_lp';
-    const shareCol = selectedPeriod === 'current' ? 'zip_share_current' : 'zip_share_lp';
+
+    // Only rows for the active period
+    const periodRows = marketAnalysis.filter((row: any) => row.period_label === activePeriodLabel);
 
     const byModel: Record<string, {
       model: string;
@@ -397,10 +394,9 @@ export function ConquestMap({ selectedDealership }: ConquestMapProps) {
       holdGroundZips: number;
       closerLookZips: number;
       topTier: string;
-      hasLpData: boolean;
     }> = {};
 
-    marketAnalysis.forEach((row: any) => {
+    periodRows.forEach((row: any) => {
       if (!row.model) return;
       if (!byModel[row.model]) {
         byModel[row.model] = {
@@ -413,15 +409,13 @@ export function ConquestMap({ selectedDealership }: ConquestMapProps) {
           holdGroundZips: 0,
           closerLookZips: 0,
           topTier: row.market_significance || '',
-          hasLpData: false,
         };
       }
       const m = byModel[row.model];
-      m.dealerSales += row[salesCol] || 0;
-      m.allSales += row[allCol] || 0;
-      m.avgShareSum += Number(row[shareCol]) || 0;
+      m.dealerSales += row.dealer_sales_current || 0;
+      m.allSales += row.all_sales_current || 0;
+      m.avgShareSum += Number(row.zip_share_current) || 0;
       m.zipCount += 1;
-      if (row[salesCol] != null) m.hasLpData = true;
       if (row.market_significance === 'Go To War') m.goToWarZips += 1;
       if (row.market_significance === 'Hold Your Ground') m.holdGroundZips += 1;
       if (row.market_significance === 'Take a Closer Look') m.closerLookZips += 1;
@@ -433,7 +427,7 @@ export function ConquestMap({ selectedDealership }: ConquestMapProps) {
         let topTier = 'Take a Closer Look';
         let maxCount = m.closerLookZips;
         if (m.goToWarZips > maxCount) { topTier = 'Go To War'; maxCount = m.goToWarZips; }
-        if (m.holdGroundZips > maxCount) { topTier = 'Hold Your Ground'; maxCount = m.holdGroundZips; }
+        if (m.holdGroundZips > maxCount) { topTier = 'Hold Your Ground'; }
         if (m.goToWarZips === m.holdGroundZips && m.goToWarZips > 0 && m.goToWarZips >= m.closerLookZips) {
           topTier = 'Go To War';
         }
@@ -448,9 +442,8 @@ export function ConquestMap({ selectedDealership }: ConquestMapProps) {
           inventoryCount,
         };
       })
-      // Primary: dealer sales desc. Tiebreak: on-lot inventory desc (most stock = most urgency)
       .sort((a, b) => b.dealerSales - a.dealerSales || b.inventoryCount - a.inventoryCount);
-  }, [marketAnalysis, modelInventoryCounts, selectedPeriod]);
+  }, [marketAnalysis, modelInventoryCounts, activePeriodLabel]);
 
   // ZIP → strategy tier lookup map
   // When "All Models" selected: color = highest-priority model's tier; tooltip lists all models
@@ -1283,10 +1276,8 @@ export function ConquestMap({ selectedDealership }: ConquestMapProps) {
                 : COLORS.amber;
               const tierIcon = m.topTier === 'Go To War' ? '🔴'
                 : m.topTier === 'Hold Your Ground' ? '🟢' : '🟡';
-              // LP period: show — if no data populated yet (don't show fake zeros)
-              const noLpData = selectedPeriod === 'lp' && !m.hasLpData;
-              const shareDisplay = noLpData ? '—'
-                : m.allSales > 0 ? ((m.dealerSales / m.allSales) * 100).toFixed(1) + '%'
+              const shareDisplay = m.allSales > 0
+                ? ((m.dealerSales / m.allSales) * 100).toFixed(1) + '%'
                 : (m.avgShare * 100).toFixed(1) + '%';
               return (
                 <div key={m.model} className="rounded-xl p-4"
@@ -1303,8 +1294,8 @@ export function ConquestMap({ selectedDealership }: ConquestMapProps) {
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span style={{ fontSize: '12px', color: COLORS.textMuted }}>Dealer Sales</span>
-                      <span className="font-semibold" style={{ fontSize: '13px', color: noLpData ? COLORS.textMuted : COLORS.emerald }}>
-                        {noLpData ? '—' : m.dealerSales.toLocaleString()}
+                      <span className="font-semibold" style={{ fontSize: '13px', color: COLORS.emerald }}>
+                        {m.dealerSales.toLocaleString()}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -1315,7 +1306,7 @@ export function ConquestMap({ selectedDealership }: ConquestMapProps) {
                     </div>
                     <div className="flex justify-between">
                       <span style={{ fontSize: '12px', color: COLORS.textMuted }}>Market Share</span>
-                      <span className="font-semibold" style={{ fontSize: '13px', color: noLpData ? COLORS.textMuted : COLORS.blue }}>
+                      <span className="font-semibold" style={{ fontSize: '13px', color: COLORS.blue }}>
                         {shareDisplay}
                       </span>
                     </div>
